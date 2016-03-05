@@ -2,8 +2,8 @@
   (:require [clojure.test :refer :all]
             [predicat.core :refer :all]))
 
-(use-fixtures :once (fn [test] (binding [*expand-primitives* true
-                                         *reduce-subject* true]
+(use-fixtures :once (fn [test] (binding [*expand-to-primitives* true
+                                         *narrow-subject* true]
                                  (test))))
 
 (deftest cata-p-test

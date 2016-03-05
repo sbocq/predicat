@@ -47,7 +47,7 @@
 (let [v (p-&& (present? [:user-name])
               (q-in [:user-name] no-spaces?))]
   (v {:user-name "99 bananas"})
-  (binding [*reduce-subject* true]
+  (binding [*narrow-subject* true]
     (expand-root-f *1)))
 ;; => #F[(no-spaces? "99 bananas")]
 

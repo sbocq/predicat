@@ -48,12 +48,12 @@ Examples assume the following predicates have been defined:
   (defpp between? [min max] (p-and (gte? min) (lt? max))))
 ")
 
-(def ^:dynamic *reduce-subject*
+(def ^:dynamic *narrow-subject*
   "If true, do not preserve the subject while expanding a failure (default:
   false)."
   false)
 
-(def ^:dynamic *expand-primitives*
+(def ^:dynamic *expand-to-primitives*
   "If true, including primitive predicates while expanding failures (default:
   false)."
   false)
@@ -106,7 +106,7 @@ Examples assume the following predicates have been defined:
   clojure.lang.IFn
   ;; expand failure
   (invoke [this] (or (when-let [f* @next-f]
-                       (when (or *expand-primitives*
+                       (when (or *expand-to-primitives*
                                  (let [q* @(.q f*)]
                                    (or
                                     ;; `next' denotes a symbol defined by user
@@ -462,7 +462,7 @@ Examples assume the following predicates have been defined:
 (defn expand-all-f
   "Collect the consecutive expansions of a proposition failure F into a vector
   until it can't be expanded further. Expansions depth can be controlled with the
-  dynamic variables *reduce-subject* and *expand-primitives*.
+  dynamic variables *narrow-subject* and *expand-to-primitives*.
 
   Examples:
 
@@ -475,7 +475,7 @@ Examples assume the following predicates have been defined:
   {:pre [(instance? F f)]}
   (loop [acc [f], f f]
     (let [n (or (let [f* (f)]
-                  (when (or *reduce-subject* (= (f->s f) (f->s f*)))
+                  (when (or *narrow-subject* (= (f->s f) (f->s f*)))
                     f*))
                 f)]
       (if (and (= (f->q f) (f->q n)) (= (f->s f) (f->s n)))
@@ -503,7 +503,7 @@ Examples assume the following predicates have been defined:
   #F[((lt? 2) 3)]
   ;; => nil
   "
-  [f] (binding [*reduce-subject* true]
+  [f] (binding [*narrow-subject* true]
         (doseq [f (expand-all-f f)] (prn f))))
 
 
