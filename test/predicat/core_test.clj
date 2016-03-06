@@ -43,15 +43,6 @@
         (is (= 2 (count (expand-all-f f))))
         (is-f? (expand-root-f f) '(p (fn [a] (>= (:v a) 1))) {:d :a, :v 0})))))
 
-(deftest pn-test
-  (testing "pn"
-    (let [gte1? (pn gte1? #(>= % 1))
-          f (gte1? 0)]
-      (is-f? f 'gte1? 0)
-      (is (= 2 (count (expand-all-f f))))
-      (is-f? (expand-root-f f) '(p (fn [a] (>= a 1))) 0)
-      (is (= 1 (gte1? 1))))))
-
 (defpp gte? [min] (p #(>= % min)))
 (defpp lt? [max] (p #(< % max)))
 (defpp between? [min max] (p-and (gte? min) (lt? max)))
@@ -77,22 +68,24 @@
              [2 '(p even?) 1])))
 
 (deftest p-and-test
-  (testing "p-and"
-    (check-f (p-and (between? 2 4) (p odd?)) 0
-             [4 '(p-and (p (fn [a] (>= a 2))) (p odd?))])
-    (check-f (p-and (between? 2 4) (p odd?)) 1
-             [5 '(p (fn [a] (>= a 2)))])
-    (check-f (p-and (between? 2 4) (p odd?)) 2
-             [2 '(p odd?)])
-    (check-s (p-and (between? 2 4) (p odd?)) 3)
-    (check-f (p-and (q-in [:age] (between? 18 40)) (q-in [:age] (p even?)))
-             {:age 41}
-             [5 '(p-and (p (fn [a] (< a 40))) (p even?)) 41])
-    (check-f (p-and (q-in [:age] (between? 18 40)) (p map?))
-             {:age 41}
-             [6 '(p (fn [a] (< a 40))) 41])
-    (check-f (p-and (q-in [:age] (between? 18 40)) (p seq?)) {:age 41}
-             [4 '(p-and (q-in [:age] (p (fn [a] (< a 40)))) (p seq?))])))
+  (check-f (p-and (between? 2 4) (p odd?)) 0
+           [4 '(p-and (p (fn [a] (>= a 2))) (p odd?))])
+  (check-f (p-and (between? 2 4) (p odd?)) 1
+           [5 '(p (fn [a] (>= a 2)))])
+  (check-f (p-and (between? 2 4) (p odd?)) 2
+           [2 '(p odd?)])
+  (check-s (p-and (between? 2 4) (p odd?)) 3)
+  (check-f (p-and (q-in [:age] (between? 18 40)) (q-in [:age] (p even?)))
+           {:age 41}
+           [5 '(p-and (p (fn [a] (< a 40))) (p even?)) 41])
+  (check-f (p-and (q-in [:age] (between? 18 40)) (p map?))
+           {:age 41}
+           [6 '(p (fn [a] (< a 40))) 41])
+  (check-f (p-and (q-in [:age] (between? 18 40)) (p seq?)) {:age 41}
+           [4 '(p-and (q-in [:age] (p (fn [a] (< a 40)))) (p seq?))])
+  (binding [*expand-to-primitives* false]
+    (check-f (between? 1 2) 3
+             [3 '(lt? 2)])))
 
 (deftest p-&&-test
   (testing "p-&&"
@@ -116,7 +109,10 @@
                        (p-not (p (fn [a] (< a 4)))))])
     (check-f (p-not (p-or (between? 2 4) (p odd?))) 1
              [3 '(p-not (p odd?))])
-    (check-s (p-not (p-or (between? 2 4) (p odd?))) 0)))
+    (check-s (p-not (p-or (between? 2 4) (p odd?))) 0)
+    (binding [*expand-to-primitives* false]
+      (check-f (p-not (gte? 2)) 2
+               [1 '(p-not (gte? 2))]))))
 
 (deftest p-all-test
   (testing "p-all"
