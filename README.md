@@ -1,6 +1,7 @@
-# Predicat
-
+[![License EPL 1.0][badge-license]](https://www.eclipse.org/legal/epl-v10.html)
 [![Build Status](https://travis-ci.org/sbocq/predicat.svg?branch=master)](https://travis-ci.org/sbocq/predicat)
+
+# Predicat
 
 Predicat is a library to create and compose predicates with traceable failures.
 
