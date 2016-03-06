@@ -206,7 +206,9 @@ Examples assume the following predicates have been defined:
   {:pre [(instance? F f)]}
   (loop [acc [f], f f]
     (let [n (or (let [next-f (f->next-f f)]
-                  (when (or *narrow-subject* (= (f->s f) (f->s next-f)))
+                  (when (or (:narrow (meta (f->pf f)))
+                            *narrow-subject*
+                            (= (f->s f) (f->s next-f)))
                     next-f))
                 f)]
       (if (and (= (f->q f) (f->q n)) (= (f->s f) (f->s n)))
@@ -724,25 +726,16 @@ Examples assume the following predicates have been defined:
   Examples:
 
   > ((p-all (between? 2 3)) [1 2 3 4])
-  ;; => #F[((p-all (between? 2 3)) [1 2 3 4])]
+  ;; => #F[((p-all (between? 2 3)) [1 3 4])]
 
-  > (explain-f *1)
-  #F[((p-all (between? 2 3)) [1 2 3 4])]
-  #F[((p-all (between? 2 3)) [1 3 4])]
-  #F[((p-all (p-and (gte? 2) (lt? 3))) [1 3 4])]
-  ;; => nil
+  > (expand-root-f *1)
+  ;; => #F[((p-all (p-and (gte? 2) (lt? 3))) [1 3 4])]
 
   > ((p-all (between? 2 5)) [1 2 3 4])
   ;; => #F[((p-all (between? 2 5)) [1])]
 
-  > (explain-f *1)
-  #F[((p-all (between? 2 5)) [1 2 3 4])]
-  #F[((p-all (between? 2 5)) [1])]
-  #F[((between? 2 5) 1)]
-  #F[((p-and (gte? 2) (lt? 5)) 1)]
-  #F[((gte? 2) 1)]
-  #F[((p (fn [a] (>= a 2))) 1)]
-  ;; => nil
+  > (expand-root-f *1)
+  ;; => #F[((gte? 2) 1)]
 
   > ((p-all (between? 2 5)) [2 3 4])
   ;; => [2 3 4]
@@ -750,39 +743,32 @@ Examples assume the following predicates have been defined:
   > ((p-all (between? 2 5)) [4 6 7])
   ;; => #F[((p-all (between? 2 5)) [4 6 7])]
 
-  > (explain-f *1)
-  #F[((p-all (between? 2 5)) [4 6 7])]
-  #F[((p-all (between? 2 5)) [6 7])]
-  #F[((p-all (p-and (gte? 2) (lt? 5))) [6 7])]
-  #F[((p-all (lt? 5)) [6 7])]
-  #F[((p-all (p (fn [a] (< a 5)))) [6 7])]
-  ;; => nil
+  > (expand-root-f *1)
+  ;; => #F[((p-all (lt? 5)) [6 7])]
    "
   [p] (letfn [(make-all-pf [q pf]
                 #(let [fs (reduce (fn [fs s] (cata-p (pf s) f (conj fs f) _ fs))
                                   []
                                   %)]
                    (if (seq fs)
-                     (->F q pf %
-                          (delay
-                           (let [ss (vec (map f->s fs))]
-                             (if (= (count %) (count fs))
-                               (if (seq (rest fs))
-                                 (let [fs* (map (comp f->next-f) fs)]
-                                   (if (apply = (map f->q fs*))
-                                     (let [f* (first fs*)
-                                           q* (delay (list 'p-all (f->q f*)))
-                                           pf* (f->pf f*)]
-                                       (->F q* pf* ss
-                                            (delay (f->next-f
-                                                    ((make-all-pf q* pf*) ss)))))
-                                     ;; can't reduce more
-                                     nil))
-                                 (first fs))
-                               ((make-all-pf q pf) ss)))))
+                     (let [ss (mapv f->s fs)]
+                       (->F q pf ss
+                            (delay
+                             (if (seq (rest fs))
+                               (let [fs* (map (comp f->next-f) fs)]
+                                 (if (apply = (map f->q fs*))
+                                   (let [f* (first fs*)
+                                         q* (delay (list 'p-all (f->q f*)))
+                                         pf* (f->pf f*)]
+                                     (->F q* pf* ss
+                                          (delay (f->next-f
+                                                  ((make-all-pf q* pf*) ss)))))
+                                   ;; can't reduce more
+                                   nil))
+                               (first fs)))))
                      %)))]
         (let [q (delay (list 'p-all (p->q p)))]
-          (->P q [p] (make-all-pf q (p->pf p))
+          (->P q [p] (make-all-pf q (with-meta (p->pf p) {:narrow true}))
                (delay (p-all (p->next-p p)))))))
 
 (defn p-no
@@ -792,13 +778,10 @@ Examples assume the following predicates have been defined:
   Examples:
 
   > ((p-no (p odd?)) [1 2])
-  ;; => #F[((p-no (p odd?)) [1 2])]
+  ;; => #F[((p-no (p odd?)) [1])]
 
-  > (explain-f *1)
-  #F[((p-no (p odd?)) [1 2])]
-  #F[((p-all (p-not (p odd?))) [1])]
-  #F[((p-not (p odd?)) 1)]
-  ;; => nil
+  > (expand-root-f *1)
+  ;; => #F[((p-not (p odd?)) 1)]
 
   > ((p-no (p odd?)) [2 4])
   ;; => [2 4]
@@ -807,9 +790,13 @@ Examples assume the following predicates have been defined:
   "
   [p] (let [p* (p-all (p-not p))
             q (delay (list 'p-no (p->q p)))]
-        (->P q
-             [p]
-             #(cata-p ((.pf p*) %) f (->F q (.pf (p-no p)) % (delay (p* %))))
+        (->P q [p] #(let [pf (f->pf p*)]
+                      (cata-p (pf %)
+                        f (let [ss (f->s f)]
+                            (->F q (with-meta pf {:narrow true}) ss
+                                 (if (seq (rest ss))
+                                   (delay ((p-no p) ss))
+                                   (.next-f f))))))
              (.next-p p*))))
 
 (defn p-some
@@ -821,21 +808,16 @@ Examples assume the following predicates have been defined:
   ;; [1 2 3 4]
 
   > ((p-some (between? 0 1)) [1 2 3 4])
-  ;; => #F[((p-some (between? 2 5)) [1])]
+  ;; => #F[((p-some (between? 0 1)) [1 2 3 4])]
 
-  > (explain-f *1)
-  #F[((p-some (between? 0 1)) [1 2 3 4])]
-  #F[((p-some (p-and (gte? 0) (lt? 1))) [1 2 3 4])]
-  #F[((p-some (lt? 1)) [1 2 3 4])]
-  #F[((p-some (p (fn [a] (< a 1)))) [1 2 3 4])]
-  ;; => nil
+  > (expand-root-f *1)
+  ;; => #F[((p-some (lt? 1)) [1 2 3 4])]
 
   > ((p-some (between? 2 3)) [1 3 4])
   ;; => #F[((p-some (between? 2 3)) [1 3 4])]
-  predicate2> (explain-f *1)
-  #F[((p-some (between? 2 3)) [1 3 4])]
-  #F[((p-some (p-and (gte? 2) (lt? 3))) [1 3 4])]
-  ;; => nil
+
+  > (expand-root-f *1)
+  ;; => #F[((p-some (p-and (gte? 2) (lt? 3))) [1 3 4])]
 
   See also: p-all, p-some-not
   "
@@ -863,7 +845,7 @@ Examples assume the following predicates have been defined:
                              (first fs))))
                      %)))]
         (let [q (delay (list 'p-some (p->q p)))]
-          (->P q [p] (make-some-pf q (p->pf p))
+          (->P q [p] (make-some-pf q (with-meta (p->pf p) {:narrow true}))
                (delay (p-some (p->next-p p)))))))
 
 (defn p-some-not
@@ -877,17 +859,16 @@ Examples assume the following predicates have been defined:
 
   > ((p-some-not (p odd?)) [1 3])
   ;; => #F[((p-some-not (p odd?)) [1 3])]
-  predicate2> (explain-f *1)
-  #F[((p-some-not (p odd?)) [1 3])]
-  #F[((p-some (p-not (p odd?))) [1 3])]
-  ;; => nil
   "
   [p] (let [p* (p-some (p-not p))
             q (delay (list 'p-some-not (p->q p)))]
-        (->P q
-             [p]
-             #(cata-p ((.pf p*) %) f (->F q (.pf (p-some-not p)) %
-                                          (delay (p* %))))
+        (->P q [p] #(let [pf (f->pf p*)]
+                      (cata-p (pf %)
+                        f (let [ss (f->s f)]
+                            (->F q (with-meta pf {:narrow true}) ss
+                                 (if (seq (rest ss))
+                                   (delay ((p-some-not p) ss))
+                                   (.next-f f))))))
              (.next-p p*))))
 
 

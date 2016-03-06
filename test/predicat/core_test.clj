@@ -49,7 +49,7 @@
 (defpq q-in [ks] (q #(get-in % ks)))
 
 (defn check-f [p s [n last-q & [last-s]]]
-  (testing (p->q p)
+  (testing (list (p->q p) s)
     (let [f (p s)]
       (is-f? f (p->q p) s)
       (let [fs (expand-all-f f)
@@ -114,35 +114,48 @@
       (check-f (p-not (gte? 2)) 2
                [1 '(p-not (gte? 2))]))))
 
+(defn check-f* [p s [n last-q & [last-s]]]
+  (testing (list (p->q p) s)
+    (let [f (p s)]
+      (is (cata-p f _ f _ nil))
+      (is (= (p->q p) (f->q f)))
+      (let [fs (expand-all-f f)
+            last-f (last fs)]
+        (is (= n (count fs)))
+        (is (= last-q (f->q last-f)))
+        (is (= (or last-s s) (f->s last-f)))))))
+
 (deftest p-all-test
   (testing "p-all"
-    (check-f (p-all (between? 2 3)) [1 2 3 4]
-             [3 '(p-all (p-and (gte? 2) (lt? 3))) [1 3 4]])
-    (check-f (p-all (between? 2 5)) [1 2 3 4]
-             [6 '(p (fn [a] (>= a 2))) 1])
+    (check-f* (p-all (between? 2 3)) [1 2 3 4]
+              [2 '(p-all (p-and (gte? 2) (lt? 3))) [1 3 4]])
+    (check-f* (p-all (between? 2 5)) [1 2 3 4]
+              [5 '(p (fn [a] (>= a 2))) 1])
     (check-s (p-all (between? 2 5)) [2 3 4])
-    (check-f (p-all (between? 2 5)) [4 6 7]
-             [5 '(p-all (p (fn [a] (< a 5)))) [6 7]])))
+    (check-f* (p-all (between? 2 5)) [4 6 7]
+              [4 '(p-all (p (fn [a] (< a 5)))) [6 7]])))
 
 (deftest p-no-test
-  (testing "p-no"
-    (check-f (p-no (p odd?)) [1 2]
-             [4 '(p-not (p odd?)) 1])
-    (check-s (p-no (p odd?)) [2 4])))
+  (check-f* (p-no (p odd?)) [1 2]
+            [2 '(p-not (p odd?)) 1])
+  (binding [*narrow-subject* false]
+    ;; p-no overrides narrow subject
+    (check-f* (p-no (p odd?)) [1 2]
+              [2 '(p-not (p odd?)) 1]))
+  (check-s (p-no (p odd?)) [2 4]))
 
 (deftest p-some-test
-  (testing "p-some"
-    (check-s (p-some (between? 2 3)) [1 2 3 4])
-    (check-f (p-some (between? 0 1)) [1 2 3 4]
-             [4 '(p-some (p (fn [a] (< a 1))))])
-    (check-f (p-some (between? 2 3)) [1 3 4]
-             [2 '(p-some (p-and (gte? 2) (lt? 3)))])))
+  (check-s (p-some (between? 2 3)) [1 2 3 4])
+  (check-f* (p-some (between? 0 1)) [1 2 3 4]
+            [4 '(p-some (p (fn [a] (< a 1))))])
+  (check-f* (p-some (between? 2 3)) [1 3 4]
+            [2 '(p-some (p-and (gte? 2) (lt? 3)))]))
 
 (deftest p-some-not-test
   (testing "p-some-not"
     (check-s (p-some-not (p odd?)) [1 2])
     (check-f (p-some-not (p odd?)) [1 3]
-             [2 '(p-some (p-not (p odd?)))])))
+             [1 '(p-some-not (p odd?))])))
 
 (deftest app-p-test
   (testing "app-p"
