@@ -20,7 +20,6 @@ This library meets the following design goals:
   structures. Predicates can be applied to the result of queries defined by the
   end user, which are then reported in failures to indicate where they occur.
 
-
 ## Install
 
 Add the following dependency to your `project.clj` file:
@@ -31,9 +30,9 @@ Add the following dependency to your `project.clj` file:
 
 See documentation and examples in the `examples` directory.
 
-Here is a short tutorial.
+Here is a brief tutorial. See also the `example` directory for more examples.
 
-### Part I. Creation and composition of predicates.
+### Part I. Create and compose predicates.
 
 ```clojure
 ;; A primitive predicate is a function object of type #P
@@ -75,7 +74,42 @@ Here is a short tutorial.
 
 See also `p-or`, `p-not`, `p-some`, ....
 
-### Part II. Validation of data structures elements using queries.
+### Part II. Explore failures interactively on the REPL
+
+```clojure
+((p-and (between? 7 77) (p even?)) 5)
+;; => #F[((p-and (between? 7 77) (p even?)) 5)]
+
+;; Evaluating a failure interactively expands it, listing possible choices if any
+(*1)
+"1. (p-and (gte? 7) (lt? 77))"
+"2. (p even?)"
+;; => #F[((p-and (p-and (gte? 7) (lt? 77)) (p even?)) 5)]
+
+;; Here we choos to expand only the first failing predicate in the and clause
+(*1 1)
+;; => #F[((gte? 7) 5)]
+
+;; In general the interactive expansion will expand as much as explain-f.
+((p-and (between? 7 77) (p even?)) 5)
+;; => #F[((p-and (between? 7 77) (p even?)) 5)]
+(*1)
+"1. (p-and (gte? 7) (lt? 77))"
+"2. (p even?)"
+;; => #F[((p-and (p-and (gte? 7) (lt? 77)) (p even?)) 5)]
+
+(*1)
+"1. (gte? 7)"
+"2. (p even?)"
+;; => #F[((p-and (gte? 7) (p even?)) 5)]
+
+(*1)
+"1. (gte? 7)"
+"2. (p even?)"
+;; => #F[((p-and (gte? 7) (p even?)) 5)]
+```
+
+### Part III. Validate of data structures elements using queries.
 
 ```clojure
 ;; Here is how to define parameterized query to query nested map elements.
@@ -117,7 +151,7 @@ See also `p-or`, `p-not`, `p-some`, ....
 ;; => nil
 ```
 
-### Part III. Failure propagation.
+### Part IV. Propagate failures without nesting conditional expressions.
 
 Programs can let failures bubble up seamlessly to the top level without
 conditional branches using `let-p` forms, which short-circuit the evaluation of

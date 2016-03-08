@@ -91,24 +91,32 @@
 
 (defpq q-in [ks] (q #(get-in % ks)))
 
-(defq q-on-length (q count))
+(defq q-count (q count))
 
 
 ;;;
 ;;; Usage
 ;;;
 
-(defp check-secret (p-and (q-in [:password] (q-on-length (within? 5 15)))
-                          (q-in [:phone] (q-on-length (p (partial = 10))))))
+(defp check-secret (p-and (q-in [:password] (q-count (within? 5 15)))
+                          (q-in [:phone] (q-count (p (partial = 10))))))
 (check-secret {:password "hiohjk" :phone "0907287"})
+;; => #F[(check-secret {:password "hiohjk", :phone "0907287"})]
 (expand-root-f *1)
-;; => #F[((q-in [:phone] (q-on-length (p (partial = 10))))
+;; => #F[((q-in [:phone] (q-count (p (partial = 10))))
 ;;        {:password "hiohjk", :phone "0907287"})]
+(*1)
+;; => #F[((q-count (p (partial = 10))) "0907287")]
+(*1)
+;; => #F[((p (partial = 10)) 7)]
 
 (check-secret {:password "hio" :phone "0907287890"})
 (expand-root-f *1)
-;; => #F[((q-in [:password] (q-on-length (gte? 5)))
+;; => #F[((q-in [:password] (q-count (gte? 5)))
 ;;        {:password "hio", :phone "0907287890"})]
+(binding [*narrow-subject* true]
+  (expand-root-f *1))
+;; => #F[((gte? 5) 3)]
 
 (check-secret {:password "hiohjk" :phone "0907287890"})
 ;; => {:password "hiohjk", :phone "0907287890"}
@@ -122,7 +130,7 @@
 (check-account {:profile {:first-name "John" :last-name "Snow"}
                 :secrets {:password "hio" :phone "0907287890"}})
 (expand-root-f *1)
-;; => #F[((q-in [:secrets] (q-in [:password] (q-on-length (gte? 5))))
+;; => #F[((q-in [:secrets] (q-in [:password] (q-count (gte? 5))))
 ;;        {:profile {:first-name "John", :last-name "Snow"},
 ;;         :secrets {:password "hio", :phone "0907287890"}})]
 
@@ -136,33 +144,33 @@
 ;; #F[((q-in [:secrets] check-secret)
 ;;     {:profile {:first-name "John", :last-name "Snow"},
 ;;      :secrets {:password "hio", :phone "0907287890"}})]
-;; #F[((q-in [:secrets] (p-and (q-in [:password] (q-on-length (within? 5 15)))
-;;                             (q-in [:phone] (q-on-length (p (partial = 10))))))
+;; #F[((q-in [:secrets] (p-and (q-in [:password] (q-count (within? 5 15)))
+;;                             (q-in [:phone] (q-count (p (partial = 10))))))
 ;;     {:profile {:first-name "John", :last-name "Snow"},
 ;;      :secrets {:password "hio", :phone "0907287890"}})]
-;; #F[((q-in [:secrets] (q-in [:password] (q-on-length (within? 5 15))))
+;; #F[((q-in [:secrets] (q-in [:password] (q-count (within? 5 15))))
 ;;     {:profile {:first-name "John", :last-name "Snow"},
 ;;      :secrets {:password "hio", :phone "0907287890"}})]
 ;; #F[((q-in [:secrets]
-;;           (q-in [:password] (q-on-length (p-and (gte? 5) (lt? 15)))))
+;;           (q-in [:password] (q-count (p-and (gte? 5) (lt? 15)))))
 ;;     {:profile {:first-name "John", :last-name "Snow"},
 ;;      :secrets {:password "hio", :phone "0907287890"}})]
-;; #F[((q-in [:secrets] (q-in [:password] (q-on-length (gte? 5))))
+;; #F[((q-in [:secrets] (q-in [:password] (q-count (gte? 5))))
 ;;     {:profile {:first-name "John", :last-name "Snow"},
 ;;      :secrets {:password "hio", :phone "0907287890"}})]
-;; #F[((q-in [:password] (q-on-length (gte? 5)))
+;; #F[((q-in [:password] (q-count (gte? 5)))
 ;;     {:password "hio", :phone "0907287890"})]
-;; #F[((q-on-length (gte? 5)) "hio")]
+;; #F[((q-count (gte? 5)) "hio")]
 ;; #F[((gte? 5) 3)]
 
 
 ;;;
-;;; For illustration
+;;; For illustration purposes only
 ;;;
 
 (defmulti renderq (fn [q] (first q)))
 (defmethod renderq 'q-in [q] (str "in " (second q) ", " (renderq (nth q 2))))
-(defmethod renderq 'q-on-length [q] (str "length " (renderq (second q))))
+(defmethod renderq 'q-count [q] (str "length " (renderq (second q))))
 (defmethod renderq 'gte? [q] (str "must be greater or equal to " (second q)))
 
 
