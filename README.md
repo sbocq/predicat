@@ -28,8 +28,6 @@ Add the following dependency to your `project.clj` file:
 
 ## Usage
 
-See documentation and examples in the `examples` directory.
-
 Here is a brief tutorial. See also the `example` directory for more examples.
 
 ### Part I. Create and compose predicates.
