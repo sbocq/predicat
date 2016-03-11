@@ -1,4 +1,4 @@
-[![License EPL 1.0][badge-license]](https://www.eclipse.org/legal/epl-v10.html)
+[![License](https://img.shields.io/badge/License-EPL%201.0-red.svg)](https://opensource.org/licenses/EPL-1.0)
 [![Build Status](https://travis-ci.org/sbocq/predicat.svg?branch=master)](https://travis-ci.org/sbocq/predicat)
 
 # Predicat
