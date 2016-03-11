@@ -5,7 +5,7 @@
 
 Predicat is a library to create and compose predicate and validation functions.
 
-This library meets the following design goals:
+The goals of the library are the following:
 
 - Introduce little additional syntax. Predicates are defined using
   plain Clojure functions.
