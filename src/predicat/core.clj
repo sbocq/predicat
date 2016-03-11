@@ -981,8 +981,8 @@ Examples assume the following predicates have been defined:
   [[s p] expr] (bind-p* [s p] expr))
 
 (defmacro let-p
-  "Haskell like do-notation macro that shortcuts the execution when one
-  intermediate proposition is a failure. In this last case, it returns the
+  "Macro similar to when-let, which shortcuts subsequent bindings when one
+  intermediate value is is a proposition failure. In this case, it returns the
   failure itself.
 
   Examples:
