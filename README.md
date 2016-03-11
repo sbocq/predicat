@@ -21,15 +21,19 @@ This library meets the following design goals:
   structures. Predicates can be applied to the result of queries defined by the
   end user, which are then reported in failures to indicate where they occur.
 
-## Install
+## Installation
 
 Add the following dependency to your `project.clj` file:
 
     [predicat "0.1.2"]
 
+## Documentation
+
+[API Docs](http://sbocq.github.io/predicat)
+
 ## Usage
 
-Here is a brief tutorial. See also the `example` directory for more examples.
+Here is a brief tutorial. See also the `examples` directory for more examples.
 
 ### Part I. Create and compose predicates.
 
