@@ -3,7 +3,7 @@
 
 # Predicat
 
-Predicat is a library to create and compose predicates with traceable failures.
+Predicat is a library to create and compose predicate and validation functions.
 
 This library meets the following design goals:
 
@@ -14,7 +14,8 @@ This library meets the following design goals:
   instead of some English strings defined by the end users.
 
 - Permit to compose predicates. New predicates can be composed from existing
-  predicates.
+  predicates. Failures can be expanded interactively in the REPL to explore their
+  root cause.
 
 - Is applicable to the validation of values nested in arbitrary data
   structures. Predicates can be applied to the result of queries defined by the

@@ -80,7 +80,7 @@ Examples assume the following predicates have been defined:
   ;; apply
   (invoke [_ s] (pf s)))
 
-(defn ->P
+(defn ^:no-doc ->P
   "Create a predicate P. Its parameters are a delayed expression Q,
   the predicate operands OPS, the predicate function PF generated from EXPR and
   the next predicate NEXT-P to which it expands (nil if none i.e. predicate is a
@@ -156,7 +156,7 @@ Examples assume the following predicates have been defined:
   ;; apply
   (invoke [this index] (iexpand-f this index)))
 
-(defn ->F
+(defn ^:no-doc ->F
   "Create a proposition failure. Its paremeters are the expression EXPR that
   fails, the predicate function PF and subject S that lead to this failure such
   that `(equal this (pf s))', sub-failures fs, and the next failure NEXT-F to
@@ -411,7 +411,7 @@ Examples assume the following predicates have been defined:
   ;; apply
   (invoke [_ s] (qf s)))
 
-(defn ->Q
+(defn ^:no-doc ->Q
   "Create a query Q. Its parameters are a delayed expression Q, and a query
   function QF."
   [q qf] (Q. q qf))
@@ -443,7 +443,7 @@ Examples assume the following predicates have been defined:
                                (zipmap ~quoted ~(cons 'list names)) '~q))]
                 (->Q q# ~q-expr))))
 
-(defn p-q
+(defn ^:no-doc p-q
   "Lift a predicate P into a predicate that applies P to the subject obtained by
   applying a QUERY to it main subject.
 
