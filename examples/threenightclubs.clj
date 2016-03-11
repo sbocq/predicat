@@ -5,7 +5,7 @@
 ;; in Scala, which can be found here:
 ;; https://gist.github.com/oxbowlakes/970717
 
-(ns threenighclubs
+(ns threenightclubs
   (require [predicat.core :refer :all]))
 
 (defrecord Person [gender age clothes sobriety])
