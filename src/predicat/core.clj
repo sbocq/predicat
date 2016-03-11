@@ -113,7 +113,8 @@ Examples assume the following predicates have been defined:
 (defn p-expand-all
   "Return the vector of the expansions of predicate P.
 
-  Examples:
+  Example:
+
   > (p-expand-all (between? 1 2))
   ;; => [#P[(between? 1 2)] #P[(p-and (gte? 1) (lt? 2))]]
   "
@@ -125,7 +126,8 @@ Examples assume the following predicates have been defined:
 (defn p-expand-last
   "Return the last expansion of predicate P.
 
-  Examples:
+  Example:
+
   > (p-expand-last (between? 1 2))
   ;; => #P[(p-and (gte? 1) (lt? 2))]
   "
@@ -135,6 +137,7 @@ Examples assume the following predicates have been defined:
   "Print the expansions of predicate P.
 
   Examples:
+
   > (p-explain (between? 1 2))
   #P[(between? 1 2)]
   #P[(p-and (gte? 1) (lt? 2))]
@@ -297,8 +300,10 @@ Examples assume the following predicates have been defined:
 (defn- scrub-fn
   "Clean up \"...__auto__...\" and \"...#\" symbols from simple expressions.
 
-  Example: > (scrub-fn '(fn [a] (> a 1) #(> b %))) < ;; => (fn [a] (> a
-  1) (fn* [c] (> b c))))
+  Example:
+
+  > (scrub-fn '(fn [a] (> a 1) #(> b %)))
+  ;; => (fn [a] (> a 1) (fn* [c] (> b c))))
   "
   [form]
   (if (seq? form)
@@ -351,7 +356,9 @@ Examples assume the following predicates have been defined:
   single argument FN-EXPR. This predicate will return a failure when the function
   returns nil.
 
-  Example: > (p #(>= % 1))
+  Example:
+
+  > (p #(>= % 1))
   ;; => #P[(p (fn [a] (>= a 1)))]
   "
   ;; Here we substitute variables bound in the environment ourselves since macros
@@ -431,6 +438,7 @@ Examples assume the following predicates have been defined:
   "Create a query (of type Q) from a query expression Q-EXPR.
 
   Example:
+
   > (q #(partial get-in %))
   ;; => #Q[(q (fn [a] (partial get-in a)))]
   "
@@ -448,6 +456,7 @@ Examples assume the following predicates have been defined:
   applying a QUERY to it main subject.
 
   Examples:
+
   > (defpq q-in [ks] (q #(get-in % ks)))
   ;; => #'q-in
 
@@ -498,7 +507,8 @@ Examples assume the following predicates have been defined:
   "Define a Parameterized Query. Bind a query Q-EXPR (of type Q) with free
   variables ARGS to a NAME.
 
-  Example:
+  Examples:
+
   > (defpq q-in [ks] (q #(get-in % ks)))
   ;; => #'q-in
 
@@ -518,6 +528,7 @@ Examples assume the following predicates have been defined:
   "Define a Query. Bind a query Q-EXPR (of type Q) to a NAME.
 
   Example:
+
   > (defq q-length (q count))
   ;; => #'q-in
 
@@ -830,6 +841,7 @@ Examples assume the following predicates have been defined:
   collection passed as its subject satisfy it.
 
   Examples:
+
   > ((p-some (between? 2 3)) [1 2 3 4])
   ;; [1 2 3 4]
 
