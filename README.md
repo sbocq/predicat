@@ -11,11 +11,11 @@ The goals of the library are the following:
   plain Clojure functions.
 
 - Report self-describing failures. Failures report the failing expressions
-  instead of some English strings defined by the end users.
+  instead of some English strings defined by the end users. Failures can then be
+  expanded interactively on the REPL up to their root cause(s).
 
 - Permit to compose predicates. New predicates can be composed from existing
-  predicates. Failures can be expanded interactively in the REPL to explore their
-  root cause.
+  predicates.
 
 - Is applicable to the validation of values nested in arbitrary data
   structures. Predicates can be applied to the result of queries defined by the
