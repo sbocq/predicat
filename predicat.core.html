@@ -109,8 +109,8 @@ Examples:
 </pre></div><div class="src-link"><a href="http://github.com/sbocq/predicat/blob/0.1.2/src/predicat/core.clj#L182">view source</a></div></div><div class="public anchor" id="var-f-.3Epf"><h3>f-&gt;pf</h3><div class="usage"><code>(f-&gt;pf f)</code></div><div class="doc"><pre class="plaintext">Return the predicate function of the predicate that failed for failure F.
 </pre></div><div class="src-link"><a href="http://github.com/sbocq/predicat/blob/0.1.2/src/predicat/core.clj#L174">view source</a></div></div><div class="public anchor" id="var-f-.3Eq"><h3>f-&gt;q</h3><div class="usage"><code>(f-&gt;q f)</code></div><div class="doc"><pre class="plaintext">Return the quoted expression of the predicate that failed for failure F.
 </pre></div><div class="src-link"><a href="http://github.com/sbocq/predicat/blob/0.1.2/src/predicat/core.clj#L170">view source</a></div></div><div class="public anchor" id="var-f-.3Es"><h3>f-&gt;s</h3><div class="usage"><code>(f-&gt;s f)</code></div><div class="doc"><pre class="plaintext">Return the subject of failure F.
-</pre></div><div class="src-link"><a href="http://github.com/sbocq/predicat/blob/0.1.2/src/predicat/core.clj#L178">view source</a></div></div><div class="public anchor" id="var-let-p"><h3>let-p</h3><h4 class="type">macro</h4><div class="usage"><code>(let-p bindings body-expr)</code></div><div class="doc"><pre class="plaintext">Haskell like do-notation macro that shortcuts the execution when one
-intermediate proposition is a failure. In this last case, it returns the
+</pre></div><div class="src-link"><a href="http://github.com/sbocq/predicat/blob/0.1.2/src/predicat/core.clj#L178">view source</a></div></div><div class="public anchor" id="var-let-p"><h3>let-p</h3><h4 class="type">macro</h4><div class="usage"><code>(let-p bindings body-expr)</code></div><div class="doc"><pre class="plaintext">Macro similar to when-let, which shortcuts subsequent bindings when one
+intermediate value is is a proposition failure. In this case, it returns the
 failure itself.
 
 Examples:
