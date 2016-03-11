@@ -24,7 +24,7 @@ This library meets the following design goals:
 
 Add the following dependency to your `project.clj` file:
 
-    [predicat "0.1.0"]
+    [predicat "0.1.1"]
 
 ## Usage
 
