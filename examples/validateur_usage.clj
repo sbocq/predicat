@@ -36,7 +36,7 @@
 ;; => #F[((p-&& (present? [:user-name]) (q-in [:user-name] no-spaces?))
 ;;        {:user-name "99 bananas"})]
 
-(expand-root-f *1)
+(get-root-f *1)
 ;; => #F[((q-in [:user-name] no-spaces?) {:user-name "99 bananas"})]
 
 
@@ -48,7 +48,7 @@
               (q-in [:user-name] no-spaces?))]
   (v {:user-name "99 bananas"})
   (binding [*narrow-subject* true]
-    (expand-root-f *1)))
+    (get-root-f *1)))
 ;; => #F[(no-spaces? "99 bananas")]
 
 
@@ -66,7 +66,7 @@
 ;;     #F[((q-in [:user :profile] (p-and (present? [:age])
 ;;                                       (present? [:birthday :year])))
 ;;         {:user {:profile {:age 10}}})]]
-(mapv expand-root-f (remove map? *1))
+(mapv get-root-f (remove map? *1))
 ;; => [#F[((p-and (present? [:name]) (present? [:age])) {})]
 ;;     #F[((p-and (present? [:name]) (present? [:age])) {:user {:name "name"}})]
 ;;     #F[((q-in [:user :profile] (present? [:birthday :year]))
@@ -102,7 +102,7 @@
                           (q-in [:phone] (q-count (p (partial = 10))))))
 (check-secret {:password "hiohjk" :phone "0907287"})
 ;; => #F[(check-secret {:password "hiohjk", :phone "0907287"})]
-(expand-root-f *1)
+(get-root-f *1)
 ;; => #F[((q-in [:phone] (q-count (p (partial = 10))))
 ;;        {:password "hiohjk", :phone "0907287"})]
 (*1)
@@ -111,11 +111,11 @@
 ;; => #F[((p (partial = 10)) 7)]
 
 (check-secret {:password "hio" :phone "0907287890"})
-(expand-root-f *1)
+(get-root-f *1)
 ;; => #F[((q-in [:password] (q-count (gte? 5)))
 ;;        {:password "hio", :phone "0907287890"})]
 (binding [*narrow-subject* true]
-  (expand-root-f *1))
+  (get-root-f *1))
 ;; => #F[((gte? 5) 3)]
 
 (check-secret {:password "hiohjk" :phone "0907287890"})
@@ -129,7 +129,7 @@
 
 (check-account {:profile {:first-name "John" :last-name "Snow"}
                 :secrets {:password "hio" :phone "0907287890"}})
-(expand-root-f *1)
+(get-root-f *1)
 ;; => #F[((q-in [:secrets] (q-in [:password] (q-count (gte? 5))))
 ;;        {:profile {:first-name "John", :last-name "Snow"},
 ;;         :secrets {:password "hio", :phone "0907287890"}})]
@@ -174,7 +174,7 @@
 (defmethod renderq 'gte? [q] (str "must be greater or equal to " (second q)))
 
 
-(let [f (expand-root-f
+(let [f (get-root-f
          (check-account {:profile {:first-name "John" :last-name "Snow"}
                          :secrets {:password "hio" :phone "0907287890"}}))]
   (renderq (f->q f)))

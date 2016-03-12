@@ -1,4 +1,4 @@
-# Predicat [![Build Status](https://travis-ci.org/sbocq/predicat.svg?branch=master)](https://travis-ci.org/sbocq/predicat)
+# Predicat [![Build Status](https://travis-ci.org/sbocq/predicat.svg?branch=master)](https://travis-ci.org/sbocq/predicat) [![Coverage Status](https://coveralls.io/repos/sbocq/predicat/badge.svg?branch=master)](https://coveralls.io/r/sbocq/predicat?branch=master)
 
 Predicat is a library to create and compose predicate and validation functions.
 
@@ -61,7 +61,7 @@ Here is a brief tutorial. See also the [examples](https://github.com/sbocq/predi
 ;; => #F[((between? 7 77) 78)
 
 ;; This is how you get to the root cause
-(expand-root-f *1)
+(get-root-f *1)
 ;; => #F[((lt? 77) 78)]                 ;too old!
 
 ;; and a full explanation
@@ -136,7 +136,7 @@ See also `p-or`, `p-not`, `p-some`, ....
 ;; => #F[(check-profile {:profile {:age 22, :password "12345678", :name "Don"}})]
 
 ;; because the password length is not greater or equal to 10 characters
-(expand-root-f *1)
+(get-root-f *1)
 ;; => #F[((q-in [:profile] (q-in [:password] (q-count (gte? 10)))) {:profile {:age 22, :password "12345678", :name "Don"}})]
 
 ;; The full explanation says it is only 8 characters long

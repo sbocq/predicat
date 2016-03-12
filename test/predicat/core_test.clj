@@ -41,7 +41,7 @@
                                 :b (p (fn [b] (< (:v b) 1))))))
                {:d :a, :v 0})
         (is (= 2 (count (expand-all-f f))))
-        (is-f? (expand-root-f f) '(p (fn [a] (>= (:v a) 1))) {:d :a, :v 0})))))
+        (is-f? (get-root-f f) '(p (fn [a] (>= (:v a) 1))) {:d :a, :v 0})))))
 
 (defpp gte? [min] (p #(>= % min)))
 (defpp lt? [max] (p #(< % max)))

@@ -90,10 +90,13 @@
 ;;        #Person{:gender :male, :age 41, :clothes #{Tie Jeans},
 ;;                :sobriety :sober})]
 ;;
-(expand-root-f *1)
+(get-root-f *1)
 ;; => #F[((q-in [:age] (lt? 40))
 ;;        #Person{:gender :male, :age 41, :clothes #{Tie Jeans},
 ;;                :sobriety :sober})]
+;; By default get-root-f doesn't narrow the subject but expanding a failure
+;; interactively or calling explain-f always does. The behavior can be tuned with
+;; *narrow-subject*.
 (*1)
 ;; => #F[((lt? 40) 41)]
 
@@ -109,7 +112,7 @@
 ;; => #F[((p-and check-age check-clothes check-sobriety)
 ;;        #Person{:gender :female, :age 17, :clothes #{High Heels},
 ;;                :sobriety :tipsy})]
-(expand-root-f *1)
+(get-root-f *1)
 ;; => #F[((q-in [:age] (gte? 18))
 ;;        #Person{:gender :female, :age 17, :clothes #{High Heels},
 ;;                :sobriety :tipsy})]
@@ -120,7 +123,7 @@
 ;; => #F[((p-and check-age check-clothes check-sobriety)
 ;;        #Person{:gender :male, :age 28, :clothes #{Tie Shirt},
 ;;                :sobriety :unconscious})]
-(expand-root-f *1)
+(get-root-f *1)
 ;; => #F[((q-in [:sobriety] (p-not (p #{:paralytic :drunk :unconscious})))
 ;;        #Person{:gender :male, :age 28, :clothes #{Tie Shirt},
 ;;                :sobriety :unconscious})]
@@ -135,7 +138,7 @@
 ;; => #F[((p-and check-age check-clothes check-sobriety)
 ;;        #Person{:gender :male, :age 41, :clothes #{Tie Jeans},
 ;;                :sobriety :paralytic})]
-(expand-root-f *1)
+(get-root-f *1)
 ;; => #F[((p-and (q-in [:age] (lt? 40))
 ;;               (q-in [:sobriety]
 ;;                     (p-not (p #{:paralytic :drunk :unconscious}))))
@@ -144,7 +147,10 @@
 (*1)
 ;; "1. (q-in [:age] (lt? 40))"
 ;; "2. (q-in [:sobriety] (p-not (p #{:paralytic :drunk :unconscious})))"
-;; => #F[((p-and (q-in [:age] (lt? 40)) (q-in [:sobriety] (p-not (p #{:paralytic :drunk :unconscious})))) #Person{:gender :male, :age 41, :clothes #{"Tie" "Jeans"}, :sobriety :paralytic})]
+;; => #F[((p-and (q-in [:age] (lt? 40)) (q-in [:sobriety]
+;;               (p-not (p #{:paralytic :drunk :unconscious}))))
+;;        #Person{:gender :male, :age 41, :clothes #{"Tie" "Jeans"},
+;;                :sobriety :paralytic})]
 (*1 1)
 ;; => #F[((q-in [:age] (lt? 40))
 ;;        #Person{:gender :male, :age 41, :clothes #{"Tie" "Jeans"},
@@ -172,16 +178,16 @@
 ;; => #F[((p-and check-age check-clothes check-sobriety check-gender)
 ;;        #Person{:gender :male, :age 59, :clothes #{Jeans},
 ;;                :sobriety :paralytic})]
-(expand-root-f *1)
+(get-root-f *1)
 ;; => #F[((p-and (q-in [:age] (lt? 40))
 ;;               (q-in [:clothes] (p (partial some #{"Tie"})))
 ;;               (q-in [:sobriety]
 ;;                     (p-not (p #{:paralytic :drunk :unconscious}))))
 ;;        #Person{:gender :male, :age 59, :clothes #{Jeans},
 ;;                :sobriety :paralytic})]
-;; By default, expand-root-f doesn't narrow the subject.
+;; By default, get-root-f doesn't narrow the subject.
 (binding [*narrow-subject* true]
-  (expand-root-f *1 2))
+  (get-root-f *1 2))
 ;; => #F[((p (partial some #{"Tie"})) #{"Jeans"})]
 
 
@@ -192,7 +198,7 @@
 ;; => #F[((p-and check-age check-clothes check-sobriety check-gender)
 ;;     #Person{:gender :female, :age 25, :clothes #{High Heels},
 ;;             :sobriety :tipsy})]
-(expand-root-f *1)
+(get-root-f *1)
 ;; => #F[((q-in [:gender] (p (partial = :male)))
 ;;        #Person{:gender :female, :age 25, :clothes #{High Heels},
 ;;                :sobriety :tipsy})]

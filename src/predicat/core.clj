@@ -236,12 +236,12 @@ Examples assume the following predicates have been defined:
         acc
         (recur (conj acc n) n)))))
 
-(defn expand-root-f
+(defn get-root-f
   "Return the last expansion of a proposition failure F.
 
   Examples:
 
-  > (expand-root-f ((between? 1 2) 3))
+  > (get-root-f ((between? 1 2) 3))
   ;; => #F[((lt? 2) 3)]
   "
   ([f] (last (expand-all-f f)))
@@ -469,11 +469,11 @@ Examples assume the following predicates have been defined:
   > ((p-q (q-in [:a :b]) (p even?)) {:a {:b 1}})
   ;; => #F[((q-in [:a :b] (p even?)) {:a {:b 1}})]
 
-  > (expand-root-f *1)
+  > (get-root-f *1)
   ;; => #F[((q-in [:a :b] (p even?)) {:a {:b 1}})]
 
   > (binding [*narrow-subject* true]
-      (expand-root-f *1))
+      (get-root-f *1))
   ;; => #F[((p even?) 1)]
   "
   [query p]
@@ -567,19 +567,19 @@ Examples assume the following predicates have been defined:
   > ((p-and (between? 2 4) (p odd?)) 0)
   ;; => #F[((p-and (between? 2 4) (p odd?)) 0)]
 
-  > (expand-root-f *1)
+  > (get-root-f *1)
   ;; => #F[((p-and (gte? 2) (p odd?)) 0)]
 
   > ((p-and (between? 2 4) (p odd?)) 1)
   ;; => #F[((p-and (between? 2 4) (p odd?)) 1)]
 
-  > (expand-root-f *1)
+  > (get-root-f *1)
   ;; => #F[((gte? 2) 1)]
 
   > ((p-and (between? 2 4) (p odd?)) 2)
   ;; => #F[((p-and (between? 2 4) (p odd?)) 2)]
 
-  > (expand-root-f *1)
+  > (get-root-f *1)
   ;; => #F[((p odd?) 2)]
 
   > ((p-and (between? 2 4) (p odd?)) 3)
@@ -620,13 +620,13 @@ Examples assume the following predicates have been defined:
   > ((p-&& (between? 2 4) (p odd?)) 0)
   ;; => #F[((p-&& (between? 2 4) (p odd?)) 0)]
 
-  > (expand-root-f *1)
+  > (get-root-f *1)
   ;; => #F[((gte? 2) 1)]
 
   > ((p-&& (between? 2 4) (p odd?)) 2)
   ;; => #F[((p-&& (between? 2 4) (p odd?)) 2)]
 
-  > (expand-root-f *1)
+  > (get-root-f *1)
   ;; => #F[((p odd?) 2)]
 
   > ((p-&& (between? 2 4) (p odd?)) 3)
@@ -661,7 +661,7 @@ Examples assume the following predicates have been defined:
   > ((p-or (between? 2 4) (p odd?)) 0)
   ;; => #F[((p-&& (between? 2 4) (p odd?)) 0)]
 
-  (expand-root-f *1)
+  (get-root-f *1)
   ;; => #F[((p-or (gte? 2) (p odd?)) 0)]
 
   See also: p-and, p-some
@@ -693,13 +693,13 @@ Examples assume the following predicates have been defined:
   > ((p-not (p-or (between? 2 4) (p odd?))) 2)
   ;; => #F[((p-not (p-or (between? 2 4) (p odd?))) 2)]
 
-  > (expand-root-f *1)
+  > (get-root-f *1)
   ;; => #F[((p-or (p-not (gte? 2)) (p-not (lt? 4))) 2)]
 
   > ((p-not (p-or (between? 2 4) (p odd?))) 1)
   ;; => #F[((p-not (p-or (between? 2 4) (p odd?))) 1)]
 
-  > (expand-root-f *1)
+  > (get-root-f *1)
   ;; => #F[((p-not (p odd?)) 1)]
 
   > ((p-not (p-or (between? 2 4) (p odd?))) 0)
@@ -737,13 +737,13 @@ Examples assume the following predicates have been defined:
   > ((p-all (between? 2 3)) [1 2 3 4])
   ;; => #F[((p-all (p-and (gte? 2) (lt? 3))) [1 3 4])]
 
-  > (expand-root-f *1)
+  > (get-root-f *1)
   ;; => #F[((p-all (between? 2 3)) [1 3 4])]
 
   > ((p-all (between? 2 5)) [1 2 3 4])
   ;; => #F[((p-all (between? 2 5)) [1])]
 
-  > (expand-root-f *1)
+  > (get-root-f *1)
   ;; => #F[((gte? 2) 1)]
 
   > ((p-all (between? 2 5)) [2 3 4])
@@ -752,7 +752,7 @@ Examples assume the following predicates have been defined:
   > ((p-all (between? 2 5)) [4 6 7])
   ;; => #F[((p-all (between? 2 5)) [4 6 7])]
 
-  > (expand-root-f *1)
+  > (get-root-f *1)
   ;; => #F[((p-all (lt? 5)) [6 7])]
    "
   [p] (->P (delay (list 'p-all (p->q p)))
@@ -785,7 +785,7 @@ Examples assume the following predicates have been defined:
   > ((p-no (p odd?)) [1 2])
   ;; => #F[((p-no (p odd?)) [1])]
 
-  > (expand-root-f *1)
+  > (get-root-f *1)
   ;; => #F[((p-not (p odd?)) 1)]
 
   > ((p-no (p odd?)) [2 4])
@@ -817,13 +817,13 @@ Examples assume the following predicates have been defined:
   > ((p-some (between? 0 1)) [1 2 3 4])
   ;; => #F[((p-some (between? 0 1)) [1 2 3 4])]
 
-  > (expand-root-f *1)
+  > (get-root-f *1)
   ;; => #F[((p-some (lt? 1)) [1 2 3 4])]
 
   > ((p-some (between? 2 3)) [1 3 4])
   ;; => #F[((p-some (between? 2 3)) [1 3 4])]
 
-  > (expand-root-f *1)
+  > (get-root-f *1)
   ;; => #F[((p-some (p-and (gte? 2) (lt? 3))) [1 3 4])]
 
   See also: p-all, p-some-not
