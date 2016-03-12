@@ -22,7 +22,7 @@ The goals of the library are the following:
 
 From Clojars:
 
-[![Clojars Version](http://clojars.org/predicat/latest-version.svg)](http://clojars.org/predicat)
+[![Clojars Version](https://clojars.org/predicat/latest-version.svg)](http://clojars.org/predicat)
 
 ## Documentation
 
