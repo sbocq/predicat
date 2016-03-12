@@ -211,14 +211,14 @@ Examples assume the following predicates have been defined:
   ([f index]
    (nth (.fs (f->next-f f)) (dec index) nil)))
 
-(defn expand-all-f
-  "Collect the consecutive expansions of a proposition failure F into a vector
-  until it can't be expanded further. Expansions depth can be controlled with the
-  dynamic variables *narrow-subject* and *expand-to-primitives*.
+(defn get-stack-f
+  "Collect the consecutive linear expansions of a proposition failure F into a
+  vector until it can't be expanded further. Expansions depth can be controlled
+  with the dynamic variables *narrow-subject* and *expand-to-primitives*.
 
   Examples:
 
-  > (expand-all-f ((between? 1 2) 3))
+  > (get-stack-f ((between? 1 2) 3))
   ;; => [#F[((between? 1 2) 3)]
          #F[((p-and (gte? 1) (lt? 2)) 3)]
          #F[((lt? 2) 3)]]
@@ -237,15 +237,15 @@ Examples assume the following predicates have been defined:
         (recur (conj acc n) n)))))
 
 (defn get-root-f
-  "Return the last expansion of a proposition failure F.
+  "Return the last linear expansion of a proposition failure F.
 
   Examples:
 
   > (get-root-f ((between? 1 2) 3))
   ;; => #F[((lt? 2) 3)]
   "
-  ([f] (last (expand-all-f f)))
-  ([f index] (last (expand-all-f (f index)))))
+  ([f] (last (get-stack-f f)))
+  ([f index] (last (get-stack-f (f index)))))
 
 (defn explain-f
   "Print the expansions of a proposition failure F.
@@ -259,7 +259,7 @@ Examples assume the following predicates have been defined:
   ;; => nil
   "
   [f] (binding [*narrow-subject* true]
-        (doseq [f (expand-all-f f)] (prn f))))
+        (doseq [f (get-stack-f f)] (prn f))))
 
 
 ;;;

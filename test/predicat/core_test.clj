@@ -26,7 +26,7 @@
       (is (= 1 (gte1? 1)))
       (let [f (gte1? 0)]
         (is-f? f '(p (fn [a] (>= a 1))) 0)
-        (is (= 1 (count (expand-all-f f))))))))
+        (is (= 1 (count (get-stack-f f))))))))
 
 (deftest p<-test
   (testing "p<"
@@ -40,7 +40,7 @@
                                 :a (p (fn [a] (>= (:v a) 1)))
                                 :b (p (fn [b] (< (:v b) 1))))))
                {:d :a, :v 0})
-        (is (= 2 (count (expand-all-f f))))
+        (is (= 2 (count (get-stack-f f))))
         (is-f? (get-root-f f) '(p (fn [a] (>= (:v a) 1))) {:d :a, :v 0})))))
 
 (defpp gte? [min] (p #(>= % min)))
@@ -52,7 +52,7 @@
   (testing (list (p->q p) s)
     (let [f (p s)]
       (is-f? f (p->q p) s)
-      (let [fs (expand-all-f f)
+      (let [fs (get-stack-f f)
             last-f (last fs)]
         (is (= n (count fs)))
         (is (= last-q (f->q last-f)))
@@ -119,7 +119,7 @@
     (let [f (p s)]
       (is (cata-p f _ f _ nil))
       (is (= (p->q p) (f->q f)))
-      (let [fs (expand-all-f f)
+      (let [fs (get-stack-f f)
             last-f (last fs)]
         (is (= n (count fs)))
         (is (= last-q (f->q last-f)))
