@@ -85,7 +85,8 @@ Examples assume the following predicates have been defined:
   the predicate operands OPS, the predicate function PF generated from EXPR and
   the next predicate NEXT-P to which it expands (nil if none i.e. predicate is a
   primitive)."
-  [q ops pf next-p] (P. q ops pf next-p))
+  ([q ops pf] (P. q ops pf (delay nil)))
+  ([q ops pf next-p] (P. q ops pf next-p)))
 
 (defn p->q
   "Return the quoted expression of a predicate P."
@@ -102,8 +103,7 @@ Examples assume the following predicates have been defined:
 (defn p->next-p
   "Return a new predicate equivalent to P but with its expression expanded."
   [p] (or (when-let [next-p @(.next-p p)]
-            (when (or *expand-to-primitives*
-                      (not (primitive-q? (p->q next-p))))
+            (when (or *expand-to-primitives* (not (primitive-q? (p->q next-p))))
               next-p))
           p))
 
@@ -152,7 +152,7 @@ Examples assume the following predicates have been defined:
 
 (declare iexpand-f)
 
-(deftype F [q pf s fs next-f]
+(deftype F [p s next-f fs]
   clojure.lang.IFn
   ;; expand failure
   (invoke [this] (iexpand-f this))
@@ -160,20 +160,25 @@ Examples assume the following predicates have been defined:
   (invoke [this index] (iexpand-f this index)))
 
 (defn ^:no-doc ->F
-  "Create a proposition failure. Its paremeters are the expression EXPR that
-  fails, the predicate function PF and subject S that lead to this failure such
-  that `(equal this (pf s))', sub-failures fs, and the next failure NEXT-F to
-  which this expression can be expanded (nil if none)."
-  ([q pf s next-f] (->F q pf s [] next-f))
-  ([q pf s fs next-f] (F. q pf s fs next-f)))
+  "Create a proposition failure. Its parameters are the (delayed) predicate P
+  that fails, the subject S that leads to this failure such that `(equal this (p
+  s))', the next failure NEXT-F to which this expression can be expanded (nil if
+  none), and a vector of sub-failures FS (empty if none)"
+  ([p s] (->F p s (delay nil)))
+  ([p s next-f] (->F p s next-f []))
+  ([p s next-f fs] (F. p s next-f fs)))
+
+(defn f->p
+  "Return the predicate that failed for failure F."
+  [f] (.p f))
 
 (defn f->q
   "Return the quoted expression of the predicate that failed for failure F."
-  [f] @(.q f))
+  [f] (p->q (f->p f)))
 
 (defn f->pf
   "Return the predicate function of the predicate that failed for failure F."
-  [f] (.pf f))
+  [f] (p->pf (f->p f)))
 
 (defn f->s
   "Return the subject of failure F."
@@ -345,11 +350,8 @@ Examples assume the following predicates have been defined:
           form)
     form))
 
-(defn ^:no-doc make-pf*
-  "Make a primitive predicate function from expression Q and a predicate function
-  F that returns nil when it fails."
-  ;; A primitive failure expands to itself and can't be expanded.
-  [q f] (fn [s] (if (f s) s (->F q (make-pf* q f) s (delay nil)))))
+(defn ^:no-doc p*
+  [q f] (->P q nil (fn [s] (if (f s) s (->F (p* q f) s)))))
 
 (defmacro p
   "Create a primitive predicate (of type P) from a function expression of a
@@ -366,15 +368,19 @@ Examples assume the following predicates have been defined:
   [fn-expr] (let [q (list 'p (clojure.walk/prewalk scrub-fn fn-expr))
                   names (keys &env)
                   quoted (list 'quote names)]
-              `(let [q# (delay (clojure.walk/prewalk-replace
-                                (zipmap ~quoted ~(cons 'list names)) '~q))]
-                 (->P q# nil (make-pf* q# ~fn-expr) (delay nil)))))
+              `(p* (delay (clojure.walk/prewalk-replace
+                           (zipmap ~quoted ~(cons 'list names)) '~q))
+                   ~fn-expr)))
 
 (defn ^:no-doc make-pf<*
-  "Make a predicate from expression Q and a function that returns a predicate
+  "Make a (delayed) predicate P and a function that returns a predicate
   that depends on the subject."
-  [q fn-p] (fn [s] (cata-p ((fn-p s) s)
-                     f (->F q (make-pf<* q fn-p) s (delay f)))))
+  [p fn-p] (fn [s] (cata-p ((fn-p s) s) f (->F p s (delay f)))))
+
+
+(defn ^:no-doc p<*
+  [q fn-p] (->P q nil (fn [s] (cata-p ((fn-p s) s)
+                                f (->F (p<* q fn-p) s (delay f))))))
 
 (defmacro p<
   "Create a primitive predicate (of type P) from a function that returns a
@@ -382,31 +388,25 @@ Examples assume the following predicates have been defined:
   [fn-p-expr] (let [q (list 'p< (clojure.walk/prewalk scrub-fn fn-p-expr))
                     names (keys &env)
                     quoted (list 'quote names)]
-                `(let [q# (delay (clojure.walk/prewalk-replace
-                                  (zipmap ~quoted ~(cons 'list names)) '~q))]
-                   (->P q# nil (make-pf<* q# ~fn-p-expr) (delay nil)))))
+                `(p<* (delay (clojure.walk/prewalk-replace
+                              (zipmap ~quoted ~(cons 'list names)) '~q))
+                      ~fn-p-expr)))
 
-(defn ^:no-doc wrap-pf*
-  "Wrap an expression Q that evals to predicate function PF into another
-  predicate function that, when it fails with failure F, returns (Q, PF) as a
-  parent failure followed by F as expanded failure."
-  [q pf] (fn [s] (cata-p (pf s) f (->F q (wrap-pf* q pf) s (delay f)))))
+(defn ^:no-doc requote-p*
+  [q p] (->P q nil (fn [s] (cata-p ((p->pf p) s)
+                             f (->F (requote-p* q p) s (delay f))))
+             (delay p)))
 
 (defmacro defpp
   "Define a Parameterized Predicate. Bind a predicate expression
   P-EXPR (of type P) with free variables ARGS to a NAME."
   [name args p-expr]
-  `(defn ~name ~args
-     (let [q# (delay (list '~name ~@args))
-           p-expr# ~p-expr]
-       (->P q# nil (wrap-pf* q# (p->pf p-expr#)) (delay p-expr#)))))
+  `(defn ~name ~args (requote-p* (delay (list '~name ~@args)) ~p-expr)))
 
 (defmacro defp
   "Define a Predicate. Bind a predicate expression P-EXPR (of type P) to a NAME."
   [name p-expr]
-  `(def ~name (let [q# (delay '~name)
-                    p-expr# ~p-expr]
-                (->P q# nil (wrap-pf* q# (p->pf p-expr#)) (delay p-expr#)))))
+  `(def ~name (requote-p* (delay '~name) ~p-expr)))
 
 
 ;;;
@@ -477,31 +477,25 @@ Examples assume the following predicates have been defined:
   ;; => #F[((p even?) 1)]
   "
   [query p]
-  (letfn [(make-p-q-pf [qq qf q pf]
-            (with-meta
-              #(let [s (qf %)]
-                 (cata-p (pf s)
-                   f (->F q (make-p-q-pf qq qf q pf) %
-                          (delay
-                           (let [next-f (f->next-f f)
-                                 next-q (f->q next-f)]
-                             (if (and (not (= (f->q f) next-q))
-                                      (= (f->s f) (f->s next-f)))
-                               ;; Can expand the inner failure further while
-                               ;; preserving the subject
-                               (let [q* (delay
-                                         (seq (concat @qq [(f->q next-f)])))
-                                     pf* (make-p-q-pf qq qf q* (f->pf next-f))]
-                                 (->F q* pf* % (delay (f->next-f (pf* %)))))
-                               ;; Return the failure that focuses on the subject
-                               ;; fetched by the query.
-                               f))))
-                   _ %))
-              {:expand true}))]
-    (let [qq (.q query)
-          q (delay (seq (concat @qq [(p->q p)])))]
-      (->P q [query] (make-p-q-pf qq (q->qf query) q (p->pf p))
-           (delay (p-q query (p->next-p p)))))))
+  (->P (delay (seq (concat (q->q query) [(p->q p)])))
+       [query]
+       (with-meta
+         #(let [s ((q->qf query) %)]
+            (cata-p ((p->pf p) s)
+              f (->F (p-q query p) %
+                     (delay
+                      (let [next-f (f->next-f f)]
+                        (if (and (not (= (f->q f) (f->q next-f)))
+                                 (= (f->s f) (f->s next-f)))
+                          ;; Can expand the inner failure further while
+                          ;; preserving the subject
+                          ((p-q query (f->p next-f)) %)
+                          ;; Return the failure that focuses on the subject
+                          ;; fetched by the query.
+                          f))))
+              _ %))
+         {:expand true})
+       (delay (p-q query (p->next-p p)))))
 
 (defmacro defpq
   "Define a Parameterized Query. Bind a query Q-EXPR (of type Q) with free
@@ -512,8 +506,8 @@ Examples assume the following predicates have been defined:
   > (defpq q-in [ks] (q #(get-in % ks)))
   ;; => #'q-in
 
-  > ((q-in [:age] (p #(>= 1))) {:age 1})
-  ;; => 1
+  > ((q-in [:age] (p #(>= % 1))) {:age 1})
+  ;; => {:age 1}
   "
   ([name args q-expr]
    (list `defpq name "" args q-expr))
@@ -564,30 +558,6 @@ Examples assume the following predicates have been defined:
                 []
                 (map list fs next-fs))))))
 
-(defn- make-and-pf [q pfs]
-  (with-meta
-    #(let [fs (reduce (fn [fs pf] (cata-p (pf %) f (conj fs f) _ fs)) [] pfs)]
-       (if (seq fs)
-         ;; at least one predicate failed
-         (->F q (make-and-pf q pfs) %
-              (vec fs)
-              (delay (if (seq (rest fs))
-                       ;; multiple predicates failed
-                       (let [fs* (if (= (count pfs) (count fs))
-                                   ;; all failed => expand them all
-                                   (expand-failures fs)
-                                   ;; some failed => keep those that failed as is
-                                   fs)]
-                         ((make-and-pf (delay (cons 'p-and (map f->q fs*)))
-                                       (map f->pf fs*))
-                          (f->s (first fs*))))
-                       ;; single predicate failed, get rid of 'p-and op
-                       (first fs))))
-         ;; success
-         %))
-    ;; e.g. (p-and (p foo)) must be expanded to (p foo)
-    {:expand true}))
-
 (defn p-and
   "Return a new predicate that is the conjunction of the predicates P1, P2 ...
   PN.
@@ -618,9 +588,29 @@ Examples assume the following predicates have been defined:
   See also: p-&&, p-or, p-all
   "
   [p1 p2 & pn]
-  (let [ps (into [p1 p2] pn)
-        q (delay (cons 'p-and (map p->q ps)))]
-    (->P q ps (make-and-pf q (map p->pf ps))
+  (let [ps (into [p1 p2] pn)]
+    (->P (delay (cons 'p-and (map p->q ps)))
+         ps
+         (with-meta
+           #(let [fs (reduce (fn [fs p] (cata-p ((p->pf p) %)
+                                          f (conj fs f)
+                                          _ fs))
+                             []
+                             ps)]
+              (if (seq fs)
+                (->F (apply p-and ps) %
+                     (delay (if (seq (rest fs))
+                              ;; multiple predicates failed
+                              (let [fs* (expand-failures fs)]
+                                ((apply p-and (map f->p fs*))
+                                 (f->s (first fs*))))
+                              ;; single predicate failed, get rid of 'p-and op
+                              (first fs)))
+                     (vec fs))
+                %))
+           ;; bypass *expand-to-primitive* directive e.g. (p-and (p foo)) must be
+           ;; expanded to (p foo)
+           {:expand true})
          (delay (apply p-and (map p->next-p ps))))))
 
 (defn p-&&
@@ -645,36 +635,17 @@ Examples assume the following predicates have been defined:
   See also: p-and
   "
   [p1 p2 & pn]
-  (letfn [(make-&&-pf [q pfs]
-            (with-meta
-              #(if-let [f (loop [pfs* pfs]
-                            (when-let [pf (first pfs*)]
-                              (cata-p (pf %) f f _ (recur (rest pfs*)))))]
-                 (->F q (make-&&-pf q pfs) % [f] (delay ((f->pf f) %)))
-                 %)
-              {:expand true}))]
-    (let [ps (into [p1 p2] pn)
-          q (delay (cons 'p-&& (map p->q ps)))]
-      (->P q ps (make-&&-pf q (map p->pf ps))
-           (delay (apply p-&& (map p->next-p ps)))))))
-
-(defn- make-or-pf [q pfs]
-  (with-meta
-    #(if-let [fs (loop [fs [], pfs* pfs]
-                   (if (seq pfs*)
-                     (cata-p ((first pfs*) %)
-                       f (recur (conj fs f) (rest pfs*))
-                       _ nil)
-                     fs))]
-       (->F q (make-or-pf q pfs) %
-            fs
-            ;; all failed => expand them all
-            (delay (let [fs* (expand-failures fs)]
-                     ((make-or-pf (delay (cons 'p-or (map f->q fs*)))
-                                  (map f->pf fs*))
-                      (f->s (first fs*))))))
-       %)
-    {:expand true}))
+  (let [ps (into [p1 p2] pn)]
+    (->P (delay (cons 'p-&& (map p->q ps)))
+         ps
+         (with-meta
+           #(if-let [f (loop [ps* ps]
+                         (when-let [p (first ps*)]
+                           (cata-p ((p->pf p) %) f f _ (recur (rest ps*)))))]
+              (->F (apply p-&& ps) % (delay f))
+              %)
+           {:expand true})
+         (delay (apply p-&& (map p->next-p ps))))))
 
 (defn p-or
   "Return a new predicate that is the disjunction of predicates P1, P2 ... PN.
@@ -695,10 +666,24 @@ Examples assume the following predicates have been defined:
 
   See also: p-and, p-some
   "
-  [p1 p2 & pn] (let [ps (into [p1 p2] pn)
-                     q (delay (cons 'p-or (map p->q ps)))]
-                 (->P q ps (make-or-pf q (map p->pf ps))
-                      (delay (apply p-or (map p->next-p ps))))))
+  [p1 p2 & pn]
+  (let [ps (into [p1 p2] pn)]
+    (->P (delay (cons 'p-or (map p->q ps)))
+         ps
+         (with-meta
+           #(if-let [fs (loop [fs [], ps* ps]
+                          (if (seq ps*)
+                            (cata-p ((p->pf (first ps*)) %)
+                              f (recur (conj fs f) (rest ps*))
+                              _ nil)
+                            fs))]
+              (->F (apply p-or ps) %
+                   (delay (let [fs* (expand-failures fs)]
+                            ((apply p-or (map f->p fs*)) (f->s (first fs*)))))
+                   fs)
+              %)
+           {:expand true})
+         (delay (apply p-or (map p->next-p ps))))))
 
 (defn p-not
   "Lift a predicate P into a predicate that succeeds if P fails.
@@ -722,33 +707,20 @@ Examples assume the following predicates have been defined:
 
   See also: p-no
   "
-  [p]
-  (letfn [(make-not-pf [q p]
-            #(cata-p ((p->pf p) %)
-               f %
-               _ (->F q (make-not-pf q p) %
-                      (delay
-                       (let [ops (p->ops p)]
-                         ((case (first (p->q p))
-                            p-not (p->pf (first ops))
-                            p-q (p-q (first ops) (p-not (second ops)))
-                            p-or (make-and-pf
-                                  (delay (list 'p-and (map list
-                                                           (repeat 'p-not)
-                                                           (map p->q ops))))
-                                  (map (comp p->pf p-not) ops))
-                            p-and (make-or-pf
-                                   (delay (list 'p-or (map list
-                                                           (repeat 'p-not)
-                                                           (map p->q ops))))
-                                   (map (comp p->pf p-not) ops))
-                            (let [p* (p->next-p p)]
-                              (make-not-pf (delay (list 'p-not (p->q p*)))
-                                           p*)))
-                          %))))))]
-    (let [q (delay (list 'p-not (p->q p)))]
-      (->P q [p] (make-not-pf q p)
-           (delay (p-not (p->next-p p)))))))
+  [p] (->P (delay (list 'p-not (p->q p)))
+           [p]
+           #(cata-p ((p->pf p) %)
+              f %
+              _ (->F (p-not p) %
+                     (delay (let [ops (p->ops p)]
+                              ((case (first (p->q p))
+                                 p-not (first ops)
+                                 p-q (p-q (first ops) (p-not (second ops)))
+                                 p-or (apply p-and (map p-not ops))
+                                 p-and (apply p-or (map p-not ops))
+                                 (p-not (p->next-p p)))
+                               %)))))
+           (delay (p-not (p->next-p p)))))
 
 
 ;;;
@@ -763,10 +735,10 @@ Examples assume the following predicates have been defined:
   Examples:
 
   > ((p-all (between? 2 3)) [1 2 3 4])
-  ;; => #F[((p-all (between? 2 3)) [1 3 4])]
+  ;; => #F[((p-all (p-and (gte? 2) (lt? 3))) [1 3 4])]
 
   > (expand-root-f *1)
-  ;; => #F[((p-all (p-and (gte? 2) (lt? 3))) [1 3 4])]
+  ;; => #F[((p-all (between? 2 3)) [1 3 4])]
 
   > ((p-all (between? 2 5)) [1 2 3 4])
   ;; => #F[((p-all (between? 2 5)) [1])]
@@ -783,30 +755,26 @@ Examples assume the following predicates have been defined:
   > (expand-root-f *1)
   ;; => #F[((p-all (lt? 5)) [6 7])]
    "
-  [p] (letfn [(make-all-pf [q pf]
-                #(let [fs (reduce (fn [fs s] (cata-p (pf s) f (conj fs f) _ fs))
-                                  []
-                                  %)]
-                   (if (seq fs)
-                     (let [ss (mapv f->s fs)]
-                       (->F q pf ss
-                            (delay
-                             (if (seq (rest fs))
-                               (let [fs* (map (comp f->next-f) fs)]
-                                 (if (apply = (map f->q fs*))
-                                   (let [f* (first fs*)
-                                         q* (delay (list 'p-all (f->q f*)))
-                                         pf* (f->pf f*)]
-                                     (->F q* pf* ss
-                                          (delay (f->next-f
-                                                  ((make-all-pf q* pf*) ss)))))
-                                   ;; can't reduce more
-                                   nil))
-                               (first fs)))))
-                     %)))]
-        (let [q (delay (list 'p-all (p->q p)))]
-          (->P q [p] (make-all-pf q (with-meta (p->pf p) {:narrow true}))
-               (delay (p-all (p->next-p p)))))))
+  [p] (->P (delay (list 'p-all (p->q p)))
+           [p]
+           (with-meta
+             #(let [fs (let [pf (p->pf p)]
+                         (reduce (fn [fs s] (cata-p (pf s) f (conj fs f) _ fs))
+                                 []
+                                 %))]
+                (if (seq fs)
+                  (let [ss (mapv f->s fs)]
+                    (->F (p-all p) ss
+                         (delay (if (seq (rest fs))
+                                  (let [fs* (map (comp f->next-f) fs)]
+                                    (if (apply = (map f->q fs*))
+                                      ((p-all (f->p (first fs*))) ss)
+                                      ;; can't expand more, explode with q-nth?
+                                      nil))
+                                  (first fs)))))
+                  %))
+             {:narrow true})
+           (delay (p-all (p->next-p p)))))
 
 (defn p-no
   "Lift a predicate P into a predicate that succeeds if none of the elements of a
@@ -825,15 +793,16 @@ Examples assume the following predicates have been defined:
 
   See also: p-all
   "
-  [p] (let [p* (p-all (p-not p))
-            q (delay (list 'p-no (p->q p)))]
-        (->P q [p] #(let [pf (f->pf p*)]
-                      (cata-p (pf %)
-                        f (let [ss (f->s f)]
-                            (->F q (with-meta pf {:narrow true}) ss
-                                 (if (seq (rest ss))
-                                   (delay ((p-no p) ss))
-                                   (.next-f f))))))
+  [p] (let [p* (p-all (p-not p))]
+        (->P (delay (list 'p-no (p->q p)))
+             [p]
+             (with-meta
+               #(cata-p ((p->pf p*) %)
+                  f (let [ss (f->s f)]
+                      (->F (p-no p) ss (delay (if (seq (rest ss))
+                                                ((p-no (f->p f)) ss)
+                                                (f->next-f f))))))
+               {:narrow true})
              (.next-p p*))))
 
 (defn p-some
@@ -859,32 +828,26 @@ Examples assume the following predicates have been defined:
 
   See also: p-all, p-some-not
   "
-  [p] (letfn [(make-some-pf [q pf]
-                #(let [fs (loop [fs [], ss %]
-                            (if (seq ss)
-                              (cata-p (pf (first ss))
-                                f (recur (conj fs f) (rest ss))
-                                _ nil)
-                              fs))]
-                   (if (seq fs)
-                     (->F q pf %
-                          (delay
-                           (if (seq (rest fs))
-                             (let [fs* (map (comp f->next-f) fs)]
-                               (if (apply = (map f->q fs*))
-                                 (let [f* (first fs*)
-                                       q* (delay (list 'p-some (f->q f*)))
-                                       pf* (f->pf f*)]
-                                   (->F q* pf* %
-                                        (delay (f->next-f ((make-some-pf q* pf*)
-                                                           %)))))
-                                 ;; can't reduce more
-                                 nil))
-                             (first fs))))
-                     %)))]
-        (let [q (delay (list 'p-some (p->q p)))]
-          (->P q [p] (make-some-pf q (with-meta (p->pf p) {:narrow true}))
-               (delay (p-some (p->next-p p)))))))
+  [p] (->P (delay (list 'p-some (p->q p)))
+           [p]
+           #(let [fs (let [pf (p->pf p)]
+                       (loop [fs [], ss %]
+                         (if (seq ss)
+                           (cata-p (pf (first ss))
+                             f (recur (conj fs f) (rest ss))
+                             _ nil)
+                           fs)))]
+              (if (seq fs)
+                (->F (p-some p) %
+                     (delay (if (seq (rest fs))
+                              (let [fs* (map (comp f->next-f) fs)]
+                                (if (apply = (map f->q fs*))
+                                  ((p-some (f->p (first fs*))) %)
+                                  ;; can't expand more, explode with q-nth?
+                                  nil))
+                              (first fs))))
+                %))
+           (delay (p-some (p->next-p p)))))
 
 (defn p-some-not
   "Lift a predicate P into a predicate that succeeds if one of the elements of a
@@ -898,15 +861,17 @@ Examples assume the following predicates have been defined:
   > ((p-some-not (p odd?)) [1 3])
   ;; => #F[((p-some-not (p odd?)) [1 3])]
   "
-  [p] (let [p* (p-some (p-not p))
-            q (delay (list 'p-some-not (p->q p)))]
-        (->P q [p] #(let [pf (f->pf p*)]
-                      (cata-p (pf %)
-                        f (let [ss (f->s f)]
-                            (->F q (with-meta pf {:narrow true}) ss
-                                 (if (seq (rest ss))
-                                   (delay ((p-some-not p) ss))
-                                   (.next-f f))))))
+  [p] (let [p* (p-some (p-not p))]
+        (->P (delay (list 'p-some-not (p->q p)))
+             [p]
+             (with-meta
+               #(cata-p ((p->pf p*) %)
+                  f (let [ss (f->s f)]
+                      (->F (p-some-not p) ss
+                           (delay (if (seq (rest ss))
+                                    ((p-some-not p) ss)
+                                    (f->next-f f))))))
+               {:narrow true})
              (.next-p p*))))
 
 
@@ -935,21 +900,8 @@ Examples assume the following predicates have been defined:
              (case (count fs)
                0 (apply f ps)
                1 (first fs)
-               (letfn [(nth-pf [i pf]
-                         (fn [s]
-                           (cata-p (pf (nth s i))
-                             f (->F (delay
-                                     (list 'q-nth i (f->q f)))
-                                    (nth-pf i (f->pf f))
-                                    s
-                                    (delay f)))))]
-                 ((make-and-pf (delay
-                                (cons 'p-and
-                                      (map-indexed (fn [i q]
-                                                     (list 'q-nth i q))
-                                                   (map f->q fs))))
-                               (map-indexed nth-pf (map f->pf fs)))
-                  (mapv f->s fs))))))
+               ((apply p-and (map-indexed q-nth (map f->p fs)))
+                (mapv f->s fs)))))
 
 
 ;;;
