@@ -1,7 +1,4 @@
-[![License](https://img.shields.io/badge/License-EPL%201.0-red.svg)](https://opensource.org/licenses/EPL-1.0)
-[![Build Status](https://travis-ci.org/sbocq/predicat.svg?branch=master)](https://travis-ci.org/sbocq/predicat)
-
-# Predicat
+# Predicat [![Build Status](https://travis-ci.org/sbocq/predicat.svg?branch=master)](https://travis-ci.org/sbocq/predicat)
 
 Predicat is a library to create and compose predicate and validation functions.
 
@@ -23,9 +20,9 @@ The goals of the library are the following:
 
 ## Installation
 
-Add the following dependency to your `project.clj` file:
+From Clojars:
 
-    [predicat "0.1.2"]
+[![Clojars Version](http://clojars.org/predicat/latest-version.svg)](http://clojars.org/predicat)
 
 ## Documentation
 
@@ -33,7 +30,7 @@ Add the following dependency to your `project.clj` file:
 
 ## Usage
 
-Here is a brief tutorial. See also the `examples` directory for more examples.
+Here is a brief tutorial. See also the [examples](https://github.com/sbocq/predicat/tree/master/examples) directory for more examples.
 
 ### Part I. Create and compose predicates.
 
