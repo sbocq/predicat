@@ -8,4 +8,12 @@
   :codox
   {:output-path "codox"
    :source-uri "http://github.com/sbocq/predicat/blob/{version}/{filepath}#L{line}"}
-  :profiles {:1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}})
+  :profiles {:1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}
+             :cloverage {:plugins [[lein-cloverage "1.0.6"]
+                                   [lein-shell "0.5.0"]]
+                         :aliases {"coveralls"
+                                   ["do"
+                                    ["cloverage" "--coveralls"]
+                                    ["shell" "curl" "-F"
+                                     "json_file=@target/coverage/coveralls.json"
+                                     "https://coveralls.io/api/v1/jobs"]]}}})

@@ -1,4 +1,4 @@
-# Predicat [![Build Status](https://travis-ci.org/sbocq/predicat.svg?branch=master)](https://travis-ci.org/sbocq/predicat) [![Coverage Status](https://coveralls.io/repos/sbocq/predicat/badge.svg?branch=master)](https://coveralls.io/r/sbocq/predicat?branch=master)
+# Predicat [![Build Status](https://travis-ci.org/sbocq/predicat.svg?branch=master)](https://travis-ci.org/sbocq/predicat)[![Coverage Status](https://coveralls.io/repos/github/sbocq/predicat/badge.svg?branch=master)](https://coveralls.io/github/sbocq/predicat?branch=master)
 
 Predicat is a library to create and compose predicate and validation functions.
 
