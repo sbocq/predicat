@@ -197,6 +197,10 @@ Examples assume the following predicates have been defined:
               next-f))
           f))
 
+(defn f->fs
+  "Return the vector of sub failures, if any"
+  [f] (.fs f))
+
 (defmethod print-method F [f ^java.io.Writer w]
   (.write w (str "#F[(" (f->q f) " " (with-out-str (pr (f->s f))) ")]")))
 
@@ -204,12 +208,12 @@ Examples assume the following predicates have been defined:
   "Expand interractively failures."
   ([f]
    (let [next-f (f->next-f f)]
-     (when-let [fs (seq (.fs next-f))]
+     (when-let [fs (seq (f->fs next-f))]
        (doseq [[i f*] (map-indexed vector fs)]
          (prn (str (inc i) ". " (f->q f*)))))
      next-f))
   ([f index]
-   (nth (.fs (f->next-f f)) (dec index) nil)))
+   (nth (f->fs (f->next-f f)) (dec index) nil)))
 
 (defn get-stack-f
   "Collect the consecutive linear expansions of a proposition failure F into a
@@ -587,31 +591,32 @@ Examples assume the following predicates have been defined:
 
   See also: p-&&, p-or, p-all
   "
-  [p1 p2 & pn]
-  (let [ps (into [p1 p2] pn)]
-    (->P (delay (cons 'p-and (map p->q ps)))
-         ps
-         (with-meta
-           #(let [fs (reduce (fn [fs p] (cata-p ((p->pf p) %)
-                                          f (conj fs f)
-                                          _ fs))
-                             []
-                             ps)]
-              (if (seq fs)
-                (->F (apply p-and ps) %
-                     (delay (if (seq (rest fs))
-                              ;; multiple predicates failed
-                              (let [fs* (expand-failures fs)]
-                                ((apply p-and (map f->p fs*))
-                                 (f->s (first fs*))))
-                              ;; single predicate failed, get rid of 'p-and op
-                              (first fs)))
-                     (vec fs))
-                %))
-           ;; bypass *expand-to-primitive* directive e.g. (p-and (p foo)) must be
-           ;; expanded to (p foo)
-           {:expand true})
-         (delay (apply p-and (map p->next-p ps))))))
+  ([p] p)
+  ([p1 p2 & pn]
+   (let [ps (into [p1 p2] pn)]
+     (->P (delay (cons 'p-and (map p->q ps)))
+          ps
+          (with-meta
+            #(let [fs (reduce (fn [fs p] (cata-p ((p->pf p) %)
+                                           f (conj fs f)
+                                           _ fs))
+                              []
+                              ps)]
+               (if (seq fs)
+                 (->F (apply p-and ps) %
+                      (delay (if (seq (rest fs))
+                               ;; multiple predicates failed
+                               (let [fs* (expand-failures fs)]
+                                 ((apply p-and (map f->p fs*))
+                                  (f->s (first fs*))))
+                               ;; single predicate failed, get rid of 'p-and op
+                               (first fs)))
+                      (vec fs))
+                 %))
+            ;; bypass *expand-to-primitive* directive e.g. (p-and (p foo)) must be
+            ;; expanded to (p foo)
+            {:expand true})
+          (delay (apply p-and (map p->next-p ps)))))))
 
 (defn p-&&
   "Create a conjunction from a sequence of predicates that short circuits the
@@ -735,10 +740,10 @@ Examples assume the following predicates have been defined:
   Examples:
 
   > ((p-all (between? 2 3)) [1 2 3 4])
-  ;; => #F[((p-all (p-and (gte? 2) (lt? 3))) [1 3 4])]
+  ;; => #F[((p-all (between? 2 3)) [1 3 4])]
 
   > (get-root-f *1)
-  ;; => #F[((p-all (between? 2 3)) [1 3 4])]
+  ;; => #F[((p-all (p-and (gte? 2) (lt? 3))) [1 3 4])]
 
   > ((p-all (between? 2 5)) [1 2 3 4])
   ;; => #F[((p-all (between? 2 5)) [1])]
@@ -769,7 +774,7 @@ Examples assume the following predicates have been defined:
                                   (let [fs* (map (comp f->next-f) fs)]
                                     (if (apply = (map f->q fs*))
                                       ((p-all (f->p (first fs*))) ss)
-                                      ;; can't expand more, explode with q-nth?
+                                      ;; can't expand more
                                       nil))
                                   (first fs)))))
                   %))
@@ -843,7 +848,7 @@ Examples assume the following predicates have been defined:
                               (let [fs* (map (comp f->next-f) fs)]
                                 (if (apply = (map f->q fs*))
                                   ((p-some (f->p (first fs*))) %)
-                                  ;; can't expand more, explode with q-nth?
+                                  ;; can't expand more
                                   nil))
                               (first fs))))
                 %))
@@ -874,6 +879,51 @@ Examples assume the following predicates have been defined:
                {:narrow true})
              (.next-p p*))))
 
+(defn chk-seq
+  "[x s] -> x [s]. Take a sequence of proposition results and return it if there
+  are only successes. Otherwise, turn it into a proposition failure for the
+  vector of failed subjects.
+
+  Examples:
+
+  > (chk-seq [((p odd?) 1) ((p even?) 2)])
+  ;; => [1 2]
+
+  > (chk-seq [((p odd?) 1) ((p even?) 3)])
+  ;; => #F[((q-nth 0 (p even?)) [3])]
+
+  > (chk-seq [((p even?) 1) ((p even?) 3)])
+  ;; => #F[((p-and (q-nth 0 (p even?)) (q-nth 1 (p even?))) [1 3])]
+
+  See also: app-p, explode-f
+  "
+  [ps] (let [fs (filter (fn [p] (cata-p p f f _ nil)) ps)]
+         (if (seq fs)
+           ((apply p-and (map-indexed q-nth (map f->p fs))) (mapv f->s fs))
+           ps)))
+
+(defn explode-f
+  "f [s] -> [f s]. Take a proposition failure for a vector of failed subjects
+  and turn it into a vector of proposition failures.
+
+  Examples:
+
+  > (explode-f ((p-and (q-nth 0 (p even?)) (q-nth 1 (p even?))) [1 3]))
+  ;; => [#F[((p even?) 1)] #F[((p even?) 3)]]
+
+  > (explode-f ((p-all (between? 2 3)) [1 2 3 4]))
+  ;; => [#F[((between? 2 3) 1)] #F[((between? 2 3) 3)] #F[((between? 2 3) 4)]]
+
+  > (explode-f ((between? 2 3) 3))
+  ;; => [#F[((between? 2 3) 3)]]
+
+  See also: chk-seq
+  "
+  [f] (case (first (f->q f))
+        p-all (mapv (first (p->ops (f->p f))) (f->s f))
+        p-and (vec (map f->next-f (f->fs f)))
+        [f]))
+
 
 ;;;
 ;;; Functor/Applicative
@@ -889,19 +939,14 @@ Examples assume the following predicates have been defined:
   ;;=> 3
 
   > (app-p + ((p odd?) 1) ((p even?) 3))
-  ;; => #F[((p even?) 3)]
+  ;; => #F[((q-nth 0 (p even?)) [3])]
 
   > (app-p + ((p even?) 1) ((p even?) 3))
   ;; => #F[((p-and (q-nth 0 (p even?)) (q-nth 1 (p even?))) [1 3])]
 
   See also: p-&&
   "
-  [f & ps] (let [fs (filter (fn [p] (cata-p p f f _ nil)) ps)]
-             (case (count fs)
-               0 (apply f ps)
-               1 (first fs)
-               ((apply p-and (map-indexed q-nth (map f->p fs)))
-                (mapv f->s fs)))))
+  [f & ps] (cata-p (chk-seq ps) f* f* _ (apply f ps)))
 
 
 ;;;

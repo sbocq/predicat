@@ -157,10 +157,33 @@
     (check-f (p-some-not (p odd?)) [1 3]
              [1 '(p-some-not (p odd?))])))
 
+(deftest chk-seq-test
+  (testing "chk-seq"
+    (is (= [1 2] (chk-seq [((p odd?) 1) ((p even?) 2)])))
+    (is-f? (chk-seq [((p odd?) 1) ((p even?) 3)])
+           '(q-nth 0 (p even?)) [3])
+    (is-f? (chk-seq [((p even?) 1) ((p even?) 3)])
+           '(p-and (q-nth 0 (p even?)) (q-nth 1 (p even?))) [1 3])))
+
+(deftest explode-f-test
+  (testing "explode-f"
+    (let [fs (explode-f ((p-and (q-nth 0 (p even?)) (q-nth 1 (p even?))) [1 3]))]
+      (is (= 2 (count fs)))
+      (is-f? (nth fs 0) '(p even?) 1)
+      (is-f? (nth fs 1) '(p even?) 3))
+    (let [fs (explode-f ((p-all (between? 2 3)) [1 2 3 4]))]
+      (is (= 3 (count fs)))
+      (is-f? (nth fs 0) '(between? 2 3) 1)
+      (is-f? (nth fs 1) '(between? 2 3) 3)
+      (is-f? (nth fs 2) '(between? 2 3) 4))
+    (let [fs (explode-f ((between? 2 3) 3))]
+      (is (= 1 (count fs)))
+      (is-f? (nth fs 0) '(between? 2 3) 3))))
+
 (deftest app-p-test
   (testing "app-p"
     (is (= 3 (app-p + ((p odd?) 1) ((p even?) 2))))
-    (is-f? (app-p + ((p odd?) 1) ((p even?) 3)) '(p even?) 3)))
+    (is-f? (app-p + ((p odd?) 1) ((p even?) 3)) '(q-nth 0 (p even?)) [3])))
 
 (deftest bind-p-test
   (testing "bind-p"
