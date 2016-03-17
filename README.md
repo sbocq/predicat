@@ -1,36 +1,60 @@
 # Predicat [![Build Status](https://travis-ci.org/sbocq/predicat.svg?branch=master)](https://travis-ci.org/sbocq/predicat)[![Coverage Status](https://coveralls.io/repos/github/sbocq/predicat/badge.svg?branch=master)](https://coveralls.io/github/sbocq/predicat?branch=master)
 
-Predicat is a library to create and compose predicate and validation functions.
+Predicat is a library that permits to easily create and compose predicates for
+validating the inputs of a program by embedding plain Clojure functions or by
+combining existing predicate functions into new ones. The predicates thus created
+are well suited for validation in that they report both the validation
+expression(s) and the input for which they fail instead of just `false` or some
+strings defined by developers - strings being only marginally better than `false`
+as they fail to capture accurately the context of a failure, they are not
+composable, and they are unclear and redundant compared to simple expressions
+already captured by the code.
 
-The goals of the library are the following:
+For example, a predicate function `(between? 7 77)` defined with the help of this
+library, to test if an input is between `7` and `77`, would return a failure
+object `#F[((between? 7 77) 78)` when applied to `78`. In a context of validating
+the inputs of a program, having the predicate and the failing subject as feedback
+is immensely more helpful than just `false` or a failure object `#F["Not in
+range"]`.
 
-- Introduce little additional syntax. Predicates are defined using
-  plain Clojure functions.
+Any predicate function created with the help of this library can also be reused
+for validating values nested in arbitrary data structures. The example below
+shows that when `between` is combined with a custom query functions `q-in` to
+define a new predicate that checks if the age of a person nested in keyword maps
+is within the required range, the failure remains as informative:
 
-- Report self-describing failures. Failures report the failing expressions
-  instead of some English strings defined by the end users. Failures can then be
-  expanded interactively on the REPL up to their root cause(s).
+  ```clojure
+  ((q-in [:person :age] (between? 7 77)) {:person {:age 78}})
+  ;; => #F[((q-in [:person :age] (between? 7 77)) {:person {:age 78}})]
+  ```
 
-- Permit to compose predicates. New predicates can be composed from existing
-  predicates.
+Moreover, since failures reported by this predicate are composed from other
+failures, they can be traced down to their root cause like this:
 
-- Is applicable to the validation of values nested in arbitrary data
-  structures. Predicates can be applied to the result of queries defined by the
-  end user, which are then reported in failures to indicate where they occur.
+  ```clojure
+  (get-root-f ((q-in [:person :age] (between? 7 77)) {:person {:age 78}}))
+  ;; => #F[((q-in [:person :age] (lt? 77)) {:person {:age 78}})]
+  ```
+
+where `(lt? 77)` is a predicate function that fails for any input number that is
+greater or equal to `77`. Read on to the brief tutorial below to see how these
+predicates and functions are created.
+
 
 ## Installation
 
-From Clojars:
+From Clojars: [![Clojars Version](https://clojars.org/predicat/latest-version.svg)](http://clojars.org/predicat)
 
-[![Clojars Version](https://clojars.org/predicat/latest-version.svg)](http://clojars.org/predicat)
 
 ## Documentation
 
 [API Docs](http://sbocq.github.io/predicat)
 
+
 ## Usage
 
 Here is a brief tutorial. See also the [examples](https://github.com/sbocq/predicat/tree/master/examples) directory for more examples.
+
 
 ### Part I. Create and compose predicates.
 
@@ -62,7 +86,7 @@ Here is a brief tutorial. See also the [examples](https://github.com/sbocq/predi
 
 ;; This is how you get to the root cause
 (get-root-f *1)
-;; => #F[((lt? 77) 78)]                 ;too old!
+;; => #F[((lt? 77) 78)]
 
 ;; and a full explanation
 (explain-f *2)
@@ -73,6 +97,7 @@ Here is a brief tutorial. See also the [examples](https://github.com/sbocq/predi
 ```
 
 See also `p-or`, `p-not`, `p-some`, ....
+
 
 ### Part II. Explore failures interactively on the REPL
 
@@ -108,6 +133,7 @@ See also `p-or`, `p-not`, `p-some`, ....
 "2. (p even?)"
 ;; => #F[((p-and (gte? 7) (p even?)) 5)]
 ```
+
 
 ### Part III. Validate of data structures elements using queries.
 
@@ -150,6 +176,7 @@ See also `p-or`, `p-not`, `p-some`, ....
 #F[((gte? 10) 8)]
 ;; => nil
 ```
+
 
 ### Part IV. Propagate failures without nesting conditional expressions.
 
