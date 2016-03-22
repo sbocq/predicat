@@ -183,7 +183,8 @@
 (deftest app-p-test
   (testing "app-p"
     (is (= 3 (app-p + ((p odd?) 1) ((p even?) 2))))
-    (is-f? (app-p + ((p odd?) 1) ((p even?) 3)) '(q-nth 0 (p even?)) [3])))
+    (is-f? (app-p + ((p odd?) 1) ((p even?) 3)) '(q-nth 0 (p even?)) [3])
+    (is-f? (app-p inc ((p even?) 3)) '(p even?) 3)))
 
 (deftest bind-p-test
   (testing "bind-p"

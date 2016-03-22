@@ -946,7 +946,10 @@ Examples assume the following predicates have been defined:
 
   See also: p-&&
   "
-  [f & ps] (cata-p (chk-seq ps) f* f* _ (apply f ps)))
+  [f & ps] (if (empty? (rest ps))
+             (let [p (first ps)]
+               (cata-p p f* f* _ (f p)))
+             (cata-p (chk-seq ps) f* f* _ (apply f ps))))
 
 
 ;;;
