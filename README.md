@@ -119,18 +119,18 @@ See also `p-or`, `p-not`, `p-some`, ....
 ((p-and (between? 7 77) (p even?)) 5)
 ;; => #F[((p-and (between? 7 77) (p even?)) 5)]
 (*1)
-"1. (p-and (gte? 7) (lt? 77))"
-"2. (p even?)"
+"1. ((p-and (gte? 7) (lt? 77)) 5)"
+"2. ((p even?) 5)"
 ;; => #F[((p-and (p-and (gte? 7) (lt? 77)) (p even?)) 5)]
 
 (*1)
-"1. (gte? 7)"
-"2. (p even?)"
+"1. ((gte? 7) 5)"
+"2. ((p even?) 5)"
 ;; => #F[((p-and (gte? 7) (p even?)) 5)]
 
 (*1)
-"1. (gte? 7)"
-"2. (p even?)"
+"1. ((gte? 7) 5)"
+"2. ((p even?) 5)"
 ;; => #F[((p-and (gte? 7) (p even?)) 5)]
 ```
 

@@ -145,8 +145,12 @@
 ;;        #Person{:gender :male, :age 41, :clothes #{Tie Jeans},
 ;;                :sobriety :paralytic})]
 (*1)
-;; "1. (q-in [:age] (lt? 40))"
-;; "2. (q-in [:sobriety] (p-not (p #{:paralytic :drunk :unconscious})))"
+;; "1. ((q-in [:age] (lt? 40))
+;;      #Person{:gender :male, :age 41, :clothes #{\"Tie\" \"Jeans\"},
+;;              :sobriety :paralytic})"
+;; "2. ((q-in [:sobriety] (p-not (p #{:paralytic :drunk :unconscious})))
+;;      #Person{:gender :male, :age 41, :clothes #{\"Tie\" \"Jeans\"},
+;;              :sobriety :paralytic})"
 ;; => #F[((p-and (q-in [:age] (lt? 40)) (q-in [:sobriety]
 ;;               (p-not (p #{:paralytic :drunk :unconscious}))))
 ;;        #Person{:gender :male, :age 41, :clothes #{"Tie" "Jeans"},

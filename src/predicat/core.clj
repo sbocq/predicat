@@ -210,7 +210,8 @@ Examples assume the following predicates have been defined:
    (let [next-f (f->next-f f)]
      (when-let [fs (seq (f->fs next-f))]
        (doseq [[i f*] (map-indexed vector fs)]
-         (prn (str (inc i) ". " (f->q f*)))))
+         (prn
+          (str (inc i) ". (" (f->q f*) " " (with-out-str (pr (f->s f*))) ")"))))
      next-f))
   ([f index]
    (nth (f->fs (f->next-f f)) (dec index) nil)))
