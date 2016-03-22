@@ -188,8 +188,8 @@ subsequent let bindings as soon as there is a failure. For example:
 ```
 
 Once it reaches the top-level, successes can be handled distinctly from failures
-using `cata-p` (aka catamorphism on proposition results, which is a
-generalisation of fold on lists to arbitrary data structures). For example:
+using `cata-p` (aka catamorphism, which is a generalisation of fold on lists to
+arbitrary data structures). For example:
 
 ```clojure
 (cata-p ((p odd?) 1)
