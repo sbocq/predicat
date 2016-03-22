@@ -1,4 +1,4 @@
-# Predicat [![Build Status](https://travis-ci.org/sbocq/predicat.svg?branch=master)](https://travis-ci.org/sbocq/predicat)[![Coverage Status](https://coveralls.io/repos/github/sbocq/predicat/badge.svg?branch=master)](https://coveralls.io/github/sbocq/predicat?branch=master)
+# Predicat ![Clojars Version](https://img.shields.io/clojars/v/predicat.svg)[![Build Status](https://img.shields.io/travis/sbocq/predicat.svg)](https://travis-ci.org/sbocq/predicat)[![Coverage Status](https://coveralls.io/repos/github/sbocq/predicat/badge.svg?branch=master)](https://coveralls.io/github/sbocq/predicat?branch=master)
 
 Predicat is a library that permits to easily create and compose predicates for
 validating the inputs of a program by embedding plain Clojure functions or by
@@ -48,7 +48,7 @@ Read on to the brief tutorial below to see how to create your own predicates and
 
 ## Installation
 
-From Clojars: [![Clojars Version](https://clojars.org/predicat/latest-version.svg)](http://clojars.org/predicat)
+From Clojars: [![Clojars Version](https://img.shields.io/clojars/v/predicat.svg)](http://clojars.org/predicat)
 
 
 ## Documentation
