@@ -1,4 +1,4 @@
-(defproject predicat "0.2.0"
+(defproject predicat "0.2.1"
   :description "A Clojure library to compose predicate/validation functions"
   :url "https://github.com/sbocq/predicat"
   :license {:name "Eclipse Public License"

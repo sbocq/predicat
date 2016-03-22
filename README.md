@@ -2,26 +2,30 @@
 
 Predicat is a library that permits to easily create and compose predicates for
 validating the inputs of a program by embedding plain Clojure functions or by
-combining existing predicate functions into new ones. The predicates thus created
-are well suited for validation in that they report both the validation
-expression(s) and the input for which they fail instead of just `false` or some
-strings defined by developers - strings being only marginally better than `false`
-as they fail to capture accurately the context of a failure, they are not
-composable, and they are unclear and redundant compared to simple expressions
-already captured by the code.
+combining existing predicate functions into new ones. In case of failure, the
+predicates created by this library will report both the validation expression(s)
+and the input for which they fail.
 
 For example, a predicate function `(between? 7 77)` defined with the help of this
 library, to test if an input is between `7` and `77`, would return a failure
-object `#F[((between? 7 77) 78)` when applied to `78`. In a context of validating
-the inputs of a program, having the predicate and the failing subject as feedback
-is immensely more helpful than just `false` or a failure object `#F["Not in
-range"]`.
+object `#F[((between? 7 77) 78)` when applied to `78`.
 
-Any predicate function created with the help of this library can also be reused
-for validating values nested in arbitrary data structures. The example below
-shows that when `between` is combined with a custom query functions `q-in` to
-define a new predicate that checks if the age of a person nested in keyword maps
-is within the required range, the failure remains as informative:
+  ```clojure
+  ((between? 7 77) 78)
+  ;; => #F[((between? 7 77) 78)]
+  ```
+
+In a validation context, having failures automatically carry the predicate
+expression and the failing subject is immensely more helpful than returning just
+`false` or a failure object `#F["Not in range"]` carrying a string that is
+redundant, tedious to maintain and often fails to capture accurately the context
+of a failure.
+
+Any predicate function created with the help of this library can be seamlessly
+reused to validate values nested in arbitrary data structures. The example
+below shows that when `between` is combined with a custom query functions `q-in`
+to define a new predicate that checks if the age of a person nested in keyword
+maps is within the required range, the failure remains as informative:
 
   ```clojure
   ((q-in [:person :age] (between? 7 77)) {:person {:age 78}})
@@ -29,7 +33,7 @@ is within the required range, the failure remains as informative:
   ```
 
 Moreover, since failures reported by this predicate are composed from other
-failures, they can be traced down to their root cause like this:
+failures, they can be traced down to their root cause, for example like this:
 
   ```clojure
   (get-root-f ((q-in [:person :age] (between? 7 77)) {:person {:age 78}}))
@@ -37,8 +41,9 @@ failures, they can be traced down to their root cause like this:
   ```
 
 where `(lt? 77)` is a predicate function that fails for any input number that is
-greater or equal to `77`. Read on to the brief tutorial below to see how these
-predicates and functions are created.
+greater or equal to `77`.
+
+Read on to the brief tutorial below to see how to create your own predicates and query functions.
 
 
 ## Installation
@@ -107,31 +112,13 @@ See also `p-or`, `p-not`, `p-some`, ....
 
 ;; Evaluating a failure interactively expands it, listing possible choices if any
 (*1)
-"1. (p-and (gte? 7) (lt? 77))"
-"2. (p even?)"
-;; => #F[((p-and (p-and (gte? 7) (lt? 77)) (p even?)) 5)]
-
-;; Here we choos to expand only the first failing predicate in the and clause
-(*1 1)
-;; => #F[((gte? 7) 5)]
-
-;; In general the interactive expansion will expand as much as explain-f.
-((p-and (between? 7 77) (p even?)) 5)
-;; => #F[((p-and (between? 7 77) (p even?)) 5)]
-(*1)
 "1. ((p-and (gte? 7) (lt? 77)) 5)"
 "2. ((p even?) 5)"
 ;; => #F[((p-and (p-and (gte? 7) (lt? 77)) (p even?)) 5)]
 
-(*1)
-"1. ((gte? 7) 5)"
-"2. ((p even?) 5)"
-;; => #F[((p-and (gte? 7) (p even?)) 5)]
-
-(*1)
-"1. ((gte? 7) 5)"
-"2. ((p even?) 5)"
-;; => #F[((p-and (gte? 7) (p even?)) 5)]
+;; Here we choose to expand only the first failing predicate in the `and` clause
+(*1 1)
+;; => #F[((gte? 7) 5)]
 ```
 
 
@@ -163,7 +150,8 @@ See also `p-or`, `p-not`, `p-some`, ....
 
 ;; because the password length is not greater or equal to 10 characters
 (get-root-f *1)
-;; => #F[((q-in [:profile] (q-in [:password] (q-count (gte? 10)))) {:profile {:age 22, :password "12345678", :name "Don"}})]
+;; => #F[((q-in [:profile] (q-in [:password] (q-count (gte? 10))))
+;;        {:profile {:age 22, :password "12345678", :name "Don"}})]
 
 ;; The full explanation says it is only 8 characters long
 (explain-f *2)
