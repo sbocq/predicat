@@ -7,7 +7,7 @@
   :plugins [[lein-codox "0.9.4" :exclusions [org.clojure/clojure]]]
   :codox
   {:output-path "codox"
-   :source-uri "http://github.com/sbocq/predicat/blob/{version}/{filepath}#L{line}"}
+   :source-uri "http://github.com/sbocq/predicat/blob/v{version}/{filepath}#L{line}"}
   :profiles {:1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}
              :cloverage {:plugins [[lein-cloverage "1.0.6"]
                                    [lein-shell "0.5.0"]]

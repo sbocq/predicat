@@ -28,6 +28,12 @@
         (is-f? f '(p (fn [a] (>= a 1))) 0)
         (is (= 1 (count (get-stack-f f))))))))
 
+(deftest scrub-test
+  (testing "scrub"
+    ;; Completely invalid predicat but we use it to test the scrubbing
+    (is (= '(p (fn [a b] (> a 1) (fn [c] (> b c))))
+           (p->q (p (fn [a b] (> a 1) #(> b %))))))))
+
 (deftest p<-test
   (testing "p<"
     (let [check? (p< (fn [s] (case (:d s)
@@ -65,7 +71,11 @@
   (testing "q-in"
     (check-s (q-in [:a :b] (p odd?)) {:a {:b 1}})
     (check-f (q-in [:a :b] (p even?)) {:a {:b 1}}
-             [2 '(p even?) 1])))
+             [2 '(p even?) 1])
+    (binding [*expand-to-primitives* false]
+      ;; must still expand the inner primitive
+      (check-f (q-in [:a :b] (p even?)) {:a {:b 1}}
+               [2 '(p even?) 1]))))
 
 (deftest p-and-test
   (check-f (p-and (between? 2 4) (p odd?)) 0
