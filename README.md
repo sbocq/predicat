@@ -122,7 +122,7 @@ See also `p-or`, `p-not`, `p-some`, ....
 ```
 
 
-### Part III. Validate of data structures elements using queries.
+### Part III. Validate data structures elements using queries.
 
 ```clojure
 ;; Here is how to define parameterized query to query nested map elements.
