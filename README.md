@@ -1,10 +1,8 @@
 # Predicat [![Clojars Version](https://img.shields.io/clojars/v/predicat.svg)](http://clojars.org/predicat)[![Build Status](https://img.shields.io/travis/sbocq/predicat.svg)](https://travis-ci.org/sbocq/predicat)[![Coverage Status](https://coveralls.io/repos/github/sbocq/predicat/badge.svg?branch=master)](https://coveralls.io/github/sbocq/predicat?branch=master)
 
-Predicat is a library that permits to easily create and compose predicates for
-validating the inputs of a program by embedding plain Clojure functions or by
-combining existing predicate functions into new ones. In case of failure, the
-predicates created by this library will report both the validation expression(s)
-and the input for which they fail.
+Predicat is a validation library that permits to create and compose predicates
+whose failures always carry the expression and the input of the predicate that
+fails.
 
 For example, a predicate function `(between? 7 77)` defined with the help of this
 library, to test if an input is between `7` and `77`, would return a failure
@@ -16,10 +14,10 @@ object `#F[((between? 7 77) 78)` when applied to `78`.
   ```
 
 In a validation context, having failures automatically carry the predicate
-expression and the failing subject is immensely more helpful than returning just
-`false` or a failure object `#F["Not in range"]` carrying a string that is
-redundant, tedious to maintain and often fails to capture accurately the context
-of a failure.
+expression and the failing subject is more helpful and practical than returning
+just `false` or a failure object like `#F["Not in range"]`. In fact, error
+strings or keys are tedious to maintain and fail to capture accurately the
+context of a failure.
 
 Any predicate function created with the help of this library can be seamlessly
 reused to validate values nested in arbitrary data structures. The example
@@ -32,8 +30,8 @@ maps is within the required range, the failure remains as informative:
   ;; => #F[((q-in [:person :age] (between? 7 77)) {:person {:age 78}})]
   ```
 
-Moreover, since failures reported by this predicate are composed from other
-failures, they can be traced down to their root cause, for example like this:
+Moreover, since predicate are composed from other predicates, their failure can
+be traced down to their root cause, for example like this:
 
   ```clojure
   (get-root-f ((q-in [:person :age] (between? 7 77)) {:person {:age 78}}))
@@ -43,7 +41,9 @@ failures, they can be traced down to their root cause, for example like this:
 where `(lt? 77)` is a predicate function that fails for any input number that is
 greater or equal to `77`.
 
-Read on to the brief tutorial below to see how to create your own predicates and query functions.
+Read on to the brief tutorial below to see how to create your own predicates and
+query functions by embedding plain Clojure functions and how to combine existing
+predicates into new ones.
 
 
 ## Installation
