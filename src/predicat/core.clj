@@ -1,27 +1,31 @@
-(ns ^{:doc "Core Predicat library to create and compose predicates with
-  traceable failures. It contains functions to create predicates (`p', `p<',
-  `defp', `defpp') or compose predicates (`p-and', `p-or', `p-not', `p-some',
-  ...) from existing ones. A predicate P is a function object that returns the
-  subject S to which it is applied to upon success, or otherwise a proposition
-  failure F. Results can be manipulated without nesting conditionnal statements
-  in applicative (`app-p') or monadic (`let-p') manners. Predicates resulting
-  from the composition of other predicates can be expanded by evaluating them as
-  nullary function or by using one of the `p-expand*' function. Proposition
-  failures can be inspected iteratively by evaluating them as nullary functions
-  or by using one of the `explain-f*' functions."} predicat.core)
+(ns ^{:doc "The core Predicat library permits to create and compose predicate of
+  type P for validating the inputs of a program. A predicate object P is a
+  function object of one argument S that captures its quoted expression Q. It
+  returns its subject S upon success, or otherwise a proposition failure object
+  of type F. Failure objects reference the predicate object P and the subject S
+  on which failed. The library contains macros (`p', `p<', `defp', `defpp') to
+  create predicates by embedding plain Clojure functions or functions (`p-and',
+  `p-or', `p-not', `p-some', ...) to compose existing predicates into new ones.
+  Results, which are either a failure object or any other object, can be
+  manipulated without nesting conditionnal statements in applicative or monadic
+  forms (`app-p', `let-p'). Predicates composed from other predicates can be
+  expanded by evaluating them as nullary function or by using one of the
+  `p-expand*' function. Proposition failures can be inspected iteratively by
+  evaluating them as nullary functions or by using one of the `explain-f*'
+  functions."}  predicat.core)
 
 (comment
   "
 Glossary:
 
-- A predicate function PF is a function of a subject S. It returns a proposition
-  result that is its argument S when successfull or else a proposition failure F.
+- A predicate object of type P captures its expression Q and the predicate
+  function PF to which it compiles.
 
-- A predicate of type P captures the symbolic expression EXPR of its predicate
-  for inspection the matching compiled predicate function PF.
+- A predicate function PF is a function of a subject S that return its argument S
+  when successful or else a proposition failure F.
 
-- A proposition failure of type F captures, the predicate expressions, the
-  predicate function PF and the subject S of a proposition that fails.
+- A proposition failure object of type F captures the predicate object P and the
+  subject S on which it fails.
 
 Conventions:
 
@@ -31,7 +35,7 @@ Conventions:
 
 - Functions suffixed by `-f' take a proposition failure as argument.
 
-- Parameters named `q' denote a delayed quoted expression.
+- Parameters named `q' denote a quoted expression.
 
 - Parameters named `pf' denote a predicate function.
 
@@ -54,17 +58,14 @@ Examples assume the following predicates have been defined:
   false)
 
 (def ^:dynamic *expand-to-primitives*
-  "If true, including primitive predicates while expanding failures (default:
+  "If true, include primitive predicates while expanding failures (default:
   false)."
   false)
 
 (defn- primitive-q?
   "Return true if the predicate expression Q is a primitive expression."
-  [q] (and
-       ;; expr is not a predicate fuction defined by user
-       (not (symbol? q))
-       ;; expr denotes a primitive
-       (= 'p (first q))))
+  [q] (and (not (symbol? q))         ;predicate symbol defined by user
+           (= 'p (first q))))        ;primitive expressions start with 'p
 
 
 ;;;
@@ -75,14 +76,14 @@ Examples assume the following predicates have been defined:
 
 (deftype P [q ops pf next-p]
   clojure.lang.IFn
-  (invoke [this] (p->next-p this))      ; expand
-  (invoke [_ s] (pf s)))                ; apply
+  (invoke [this] (p->next-p this))      ;expand predicate
+  (invoke [_ s] (pf s)))                ;apply predicate
 
 (defn ^:no-doc ->P
-  "Create a predicate P. Its parameters are the (delayed) preicate expression Q,
-  the predicate operands OPS (nil if none), the predicate function PF evaluated
-  from EXPR and the next (delayed) predicate NEXT-P to which it expands (nil if
-  none i.e. predicate is a primitive)."
+  "Create a predicate object of type P. Its parameters are the (delayed)
+  predicate expression Q,the predicate operands OPS (nil if none), the predicate
+  function PF evaluated from Q, and the (delayed) predicate NEXT-P to which it
+  expands (nil if none i.e. predicate is a primitive)."
   ([q ops pf] (P. q ops pf (delay nil)))
   ([q ops pf next-p] (P. q ops pf next-p)))
 
@@ -139,14 +140,14 @@ Examples assume the following predicates have been defined:
 
 (deftype F [p s next-f fs]
   clojure.lang.IFn
-  (invoke [this] (iexpand-f this))      ; expand failure
-  (invoke [this index] (iexpand-f this index))) ; expand nth sub-failure
+  (invoke [this] (iexpand-f this))      ;expand failure
+  (invoke [this index] (iexpand-f this index))) ;expand nth sub-failure
 
 (defn ^:no-doc ->F
-  "Create a proposition failure. Its parameters are the (delayed) predicate P
-  that fails, the subject S that does not satisy P such that `(equal failure (p
-  s))', the next (delayed) failure NEXT-F to which this expression can be
-  expanded (nil if none), and the vector of its sub-failures FS."
+  "Create a proposition failure object of type F. Its parameters are the
+  predicate P that fails, the subject S that does not satisy P such that
+  `(equal failure (p s))', the (delayed) failure NEXT-F to which this expression
+  can be expanded (nil if none), and the vector of its sub-failures FS."
   ([p s] (->F p s (delay nil)))
   ([p s next-f] (->F p s next-f []))
   ([p s next-f fs] (F. p s next-f fs)))
@@ -171,9 +172,9 @@ Examples assume the following predicates have been defined:
   "Expand a failure F to the next most specific failure."
   [f] (or (when-let [next-f @(.next-f f)]
             (when (or
-                   ;; Expanded next-f even if it is primitive expression
+                   ;; Expand next-f even if it is primitive expression
                    *expand-to-primitives* (:expand (meta (f->pf f)))
-                   ;; Expand to next-f if it is not a primitive expression
+                   ;; or expand to next-f if it is not a primitive expression
                    (not (primitive-q? (f->q next-f)))
                    ;; unless it narrows the subject
                    (not (= (f->s f) (f->s next-f))))
@@ -181,7 +182,7 @@ Examples assume the following predicates have been defined:
           f))
 
 (defn f->fs
-  "Return the vector of sub failures, if any"
+  "Return the vector of sub failures, if any."
   [f] (.fs f))
 
 (defmethod print-method F [f ^java.io.Writer w]
@@ -191,9 +192,10 @@ Examples assume the following predicates have been defined:
   "Expand failure F interactively and dipslay multiple choices if any."
   ([f] (let [next-f (f->next-f f)]
          (when-let [fs (seq (f->fs next-f))]
-           (doseq [[i f*] (map-indexed vector fs)]
-             (printf "%d. (%s %s)"
-                     (inc i) (f->q f*) (with-out-str (pr (f->s f*))))))
+           (when (next fs)
+             (doseq [[i f*] (map-indexed vector fs)]
+               (printf "%d. (%s %s)%n"
+                       (inc i) (f->q f*) (with-out-str (pr (f->s f*)))))))
          next-f))
   ([f index] (nth (f->fs (f->next-f f)) (dec index) nil)))
 
@@ -213,9 +215,11 @@ Examples assume the following predicates have been defined:
   {:pre [(instance? F f)]}
   (loop [acc [f], f f]
     (let [next-f (or (let [next-f (f->next-f f)]
-                       (when (or *narrow-subject*
-                                 (:narrow (meta (f->pf f)))
-                                 (= (f->s f) (f->s next-f)))
+                       (when (or
+                              ;; Expand next-f, even if subject is more specific
+                              *narrow-subject* (:narrow (meta (f->pf f)))
+                              ;; or expand only if the subject is preserved.
+                              (= (f->s f) (f->s next-f)))
                          next-f))
                      f)]
       (if (and (= (f->q f) (f->q next-f)) (= (f->s f) (f->s next-f)))
@@ -270,6 +274,11 @@ Examples assume the following predicates have been defined:
          ~(cond (or (not s) (= s s-expr)) r*
                 (= s '_) s-expr
                 :else `(let [~s ~r*] ~s-expr))))))
+
+(defn is-f?
+  "Test if proposition result P is a failure. Return it if it is a failure,
+  otherwise nil."
+  [p] (cata-p p f f _ nil))
 
 
 ;;;
@@ -353,7 +362,20 @@ Examples assume the following predicates have been defined:
 
 (defmacro p<
   "Create a primitive predicate (of type P) from a function that returns a
-  predicate that depends on the subject."
+  predicate that depends on the subject.
+
+  Examples:
+
+  > ((p< #(if (< % 10) (p even?) (p odd?))) 7)
+  ;; => #F[((p< (fn [a] (if (< a 10) (p even?) (p odd?)))) 7)]
+  > ((p< #(if (< % 10) (p even?) (p odd?))) 6)
+  ;; => 6
+
+  > ((p< #(if (< % 10) (p even?) (p odd?))) 17)
+  ;; => 17
+  > ((p< #(if (< % 10) (p even?) (p odd?))) 16)
+  ;; => #F[((p< (fn [a] (if (< a 10) (p even?) (p odd?)))) 16)]
+  "
   [fn-p-expr] (let [q (list 'p< (clojure.walk/prewalk scrub-fn fn-p-expr))
                     names (keys &env)
                     quoted (list 'quote names)]
@@ -368,12 +390,24 @@ Examples assume the following predicates have been defined:
 
 (defmacro defpp
   "Define a Parameterized Predicate. Bind a predicate expression
-  P-EXPR (of type P) with free variables ARGS to a NAME."
+  P-EXPR (of type P) with free variables ARGS to a NAME.
+
+  Example:
+
+  > (defpp gte? [min] (p #(>= % min)))
+  ;; => #'gte?
+  "
   [name args p-expr]
   `(defn ~name ~args (requote-p* (delay (list '~name ~@args)) ~p-expr)))
 
 (defmacro defp
-  "Define a Predicate. Bind a predicate expression P-EXPR (of type P) to a NAME."
+  "Define a Predicate. Bind a predicate expression P-EXPR (of type P) to a NAME.
+
+  Example:
+
+  > (defp gte-10? (gte? 10))
+  ;; => #'gte-10?
+  "
   [name p-expr]
   `(def ~name (requote-p* (delay '~name) ~p-expr)))
 
@@ -384,11 +418,11 @@ Examples assume the following predicates have been defined:
 
 (deftype Q [q qf]
   clojure.lang.IFn
-  (invoke [_ s] (qf s)))                ; apply
+  (invoke [_ s] (qf s)))                ;apply
 
 (defn ^:no-doc ->Q
-  "Create a query Q. Its parameters are a (delayed) expression Q, and a query
-  function QF."
+  "Create a query object of type Q. Its parameters are a (delayed) expression Q,
+  and a query function QF."
   [q qf] (Q. q qf))
 
 (defn q->q
@@ -410,7 +444,7 @@ Examples assume the following predicates have been defined:
   > (q #(partial get-in %))
   ;; => #Q[(q (fn [a] (partial get-in a)))]
   "
-  ;; Same trick as for p
+  ;; Same trick as for macro 'p
   [q-expr] (let [q (list 'q (clojure.walk/prewalk scrub-fn q-expr))
                  names (keys &env)
                  quoted (list 'quote names)]
@@ -451,8 +485,7 @@ Examples assume the following predicates have been defined:
             f (->F (p-q query p) %
                    (delay
                     (let [next-f (f->next-f f)]
-                      ;; Can we expand the inner failure further while preserving
-                      ;; the subject?
+                      ;; Expand inner failure only if it preserves the subject.
                       (if (and (not (= (f->q f) (f->q next-f)))
                                (= (f->s f) (f->s next-f)))
                         ((p-q query (f->p next-f)) %)
@@ -511,17 +544,17 @@ Examples assume the following predicates have been defined:
 ;;; Combinators on predicates
 ;;;
 
-(defn- expand-failures [fs]
-  ;; Check if next failures have the same subject. If not, don't expand those
-  ;; that haven't the same subject as the parent.
-  (let [next-fs (map f->next-f fs)]
-    (if (apply = (map f->s next-fs))
-      next-fs
-      (let [s (f->s (first fs))]
-        (reduce (fn [fs [f next-f]]
-                  (conj fs (if (= s (f->s next-f)) next-f f)))
-                []
-                (map list fs next-fs))))))
+(defn- expand-failures
+  "Expand a sequence of failures FS in such a manner that the resulting expanded
+  failures have all the same subject."
+  [fs] (let [next-fs (map f->next-f fs)]
+         (if (apply = (map f->s next-fs))
+           next-fs
+           (let [s (f->s (first fs))]
+             (reduce (fn [fs [f next-f]]
+                       (conj fs (if (= s (f->s next-f)) next-f f)))
+                     []
+                     (map list fs next-fs))))))
 
 (defn p-and
   "Return a new predicate that is the conjunction of the predicates P1, P2 ...
@@ -605,9 +638,7 @@ Examples assume the following predicates have been defined:
     (->P (delay (cons 'p-&& (map p->q ps)))
          ps
          (with-meta
-           #(if-let [f (loop [ps* ps]
-                         (when-let [p (first ps*)]
-                           (cata-p ((p->pf p) %) f f _ (recur (rest ps*)))))]
+           #(if-let [f (some (fn [p] (is-f? (p %))) ps)]
               (->F (apply p-&& ps) % (delay f))
               %)
            {:expand true})
@@ -724,21 +755,16 @@ Examples assume the following predicates have been defined:
   [p] (->P (delay (list 'p-all (p->q p)))
            [p]
            (with-meta
-             #(let [fs (let [pf (p->pf p)]
-                         (reduce (fn [fs s] (cata-p (pf s) f (conj fs f) _ fs))
-                                 []
-                                 %))]
-                (if (seq fs)
-                  (let [ss (mapv f->s fs)]
-                    (->F (p-all p) ss
-                         (delay (if (next fs)
-                                  (let [fs* (map (comp f->next-f) fs)]
-                                    (if (apply = (map f->q fs*))
-                                      ((p-all (f->p (first fs*))) ss)
-                                      ;; can't expand more
-                                      nil))
-                                  (first fs)))))
-                  %))
+             #(if-let [fs (let [pf (p->pf p)]
+                            (seq (keep (fn [s] (is-f? (pf s))) %)))]
+                (let [ss (mapv f->s fs)]
+                  (->F (p-all p) ss
+                       (delay (if (next fs)
+                                (let [fs* (map f->next-f fs)]
+                                  (when (apply = (map f->q fs*))
+                                    ((p-all (f->p (first fs*))) ss)))
+                                (first fs)))))
+                %)
              {:narrow true})
            (delay (p-all (p->next-p p)))))
 
@@ -796,23 +822,20 @@ Examples assume the following predicates have been defined:
   "
   [p] (->P (delay (list 'p-some (p->q p)))
            [p]
-           #(let [fs (let [pf (p->pf p)]
-                       (loop [fs [], ss %]
-                         (if (seq ss)
-                           (cata-p (pf (first ss))
-                             f (recur (conj fs f) (rest ss))
-                             _ nil)
-                           fs)))]
-              (if (seq fs)
-                (->F (p-some p) %
-                     (delay (if (next fs)
-                              (let [fs* (map (comp f->next-f) fs)]
-                                (if (apply = (map f->q fs*))
-                                  ((p-some (f->p (first fs*))) %)
-                                  ;; can't expand more
-                                  nil))
-                              (first fs))))
-                %))
+           #(if-let [fs (seq (let [pf (p->pf p)]
+                               (loop [fs [], ss %]
+                                 (if (seq ss)
+                                   (cata-p (pf (first ss))
+                                     f (recur (conj fs f) (rest ss))
+                                     _ nil)
+                                   fs))))]
+              (->F (p-some p) %
+                   (delay (if (next fs)
+                            (let [fs* (map (comp f->next-f) fs)]
+                              (when (apply = (map f->q fs*))
+                                ((p-some (f->p (first fs*))) %)))
+                            (first fs))))
+              %)
            (delay (p-some (p->next-p p)))))
 
 (defn p-some-not
@@ -833,10 +856,9 @@ Examples assume the following predicates have been defined:
              (with-meta
                #(cata-p ((p->pf p*) %)
                   f (let [ss (f->s f)]
-                      (->F (p-some-not p) ss
-                           (delay (if (next ss)
-                                    ((p-some-not p) ss)
-                                    (f->next-f f))))))
+                      (->F (p-some-not p) ss (delay (if (next ss)
+                                                      ((p-some-not p) ss)
+                                                      (f->next-f f))))))
                {:narrow true})
              (.next-p p*))))
 
@@ -858,10 +880,9 @@ Examples assume the following predicates have been defined:
 
   See also: app-p, explode-f
   "
-  [ps] (let [fs (filter (fn [p] (cata-p p f f _ nil)) ps)]
-         (if (seq fs)
-           ((apply p-and (map-indexed q-nth (map f->p fs))) (mapv f->s fs))
-           ps)))
+  [ps] (if-let [fs (seq (filter is-f? ps))]
+         ((apply p-and (map-indexed q-nth (map f->p fs))) (mapv f->s fs))
+         ps))
 
 (defn explode-f
   "f [s] -> [f s]. Take a proposition failure for a vector of failed subjects
@@ -907,9 +928,9 @@ Examples assume the following predicates have been defined:
 
   See also: p-&&
   "
-  [f & ps] (if (empty? (rest ps))
-             (let [p (first ps)] (cata-p p f* f* _ (f p)))
-             (cata-p (chk-seq ps) f* f* _ (apply f ps))))
+  [f & ps] (if (seq (rest ps))
+             (cata-p (chk-seq ps) f* f* _ (apply f ps))
+             (let [p (first ps)] (cata-p p f* f* _ (f p)))))
 
 
 ;;;
@@ -942,7 +963,7 @@ Examples assume the following predicates have been defined:
 
 (defmacro let-p
   "Macro similar to when-let, which shortcuts subsequent bindings when one
-  intermediate value is is a proposition failure. In this case, it returns the
+  intermediate value is a proposition failure. In this case, it returns the
   failure itself.
 
   Examples:
@@ -968,4 +989,3 @@ Examples assume the following predicates have been defined:
     (when bindings
       (let [rbindings (reverse (partition 2 bindings))]
         (reduce -bind body-expr rbindings)))))
-

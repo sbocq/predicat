@@ -15,8 +15,8 @@
                      f f
                      s (inc s)))))))
 
-(defn is-f? [f q s]
-  (is (cata-p f _ f _ nil))
+(defn is-f [f q s]
+  (is (is-f? f))
   (is (= q (f->q f)))
   (is (= s (f->s f))))
 
@@ -25,7 +25,7 @@
     (let [gte1? (p #(>= % 1))]
       (is (= 1 (gte1? 1)))
       (let [f (gte1? 0)]
-        (is-f? f '(p (fn [a] (>= a 1))) 0)
+        (is-f f '(p (fn [a] (>= a 1))) 0)
         (is (= 1 (count (get-stack-f f))))))))
 
 (deftest scrub-test
@@ -42,22 +42,30 @@
       (is (= {:d :a, :v 2} (check? {:d :a, :v 2})))
       (is (= {:d :b, :v 0} (check? {:d :b, :v 0})))
       (let [f (check? {:d :a, :v 0})]
-        (is-f? f '(p< (fn [s] (case (:d s)
-                                :a (p (fn [a] (>= (:v a) 1)))
-                                :b (p (fn [b] (< (:v b) 1))))))
-               {:d :a, :v 0})
+        (is-f f '(p< (fn [s] (case (:d s)
+                               :a (p (fn [a] (>= (:v a) 1)))
+                               :b (p (fn [b] (< (:v b) 1))))))
+              {:d :a, :v 0})
         (is (= 2 (count (get-stack-f f))))
-        (is-f? (get-root-f f) '(p (fn [a] (>= (:v a) 1))) {:d :a, :v 0})))))
+        (is-f (get-root-f f) '(p (fn [a] (>= (:v a) 1))) {:d :a, :v 0})))))
 
 (defpp gte? [min] (p #(>= % min)))
 (defpp lt? [max] (p #(< % max)))
 (defpp between? [min max] (p-and (gte? min) (lt? max)))
 (defpq q-in [ks] (q #(get-in % ks)))
 
+(deftest check-p-expand
+  (testing "p-expand-all"
+    (binding [*expand-to-primitives* false]
+      (let [p (between? 1 2)
+            all (p-expand-all p)]
+        (is (= 2 (count all)))
+        (is (= '(p-and (gte? 1) (lt? 2)) (p->q (p-expand-last p))))))))
+
 (defn check-f [p s [n last-q & [last-s]]]
   (testing (list (p->q p) s)
     (let [f (p s)]
-      (is-f? f (p->q p) s)
+      (is-f f (p->q p) s)
       (let [fs (get-stack-f f)
             last-f (last fs)]
         (is (= n (count fs)))
@@ -170,38 +178,38 @@
 (deftest chk-seq-test
   (testing "chk-seq"
     (is (= [1 2] (chk-seq [((p odd?) 1) ((p even?) 2)])))
-    (is-f? (chk-seq [((p odd?) 1) ((p even?) 3)])
-           '(q-nth 0 (p even?)) [3])
-    (is-f? (chk-seq [((p even?) 1) ((p even?) 3)])
-           '(p-and (q-nth 0 (p even?)) (q-nth 1 (p even?))) [1 3])))
+    (is-f (chk-seq [((p odd?) 1) ((p even?) 3)])
+          '(q-nth 0 (p even?)) [3])
+    (is-f (chk-seq [((p even?) 1) ((p even?) 3)])
+          '(p-and (q-nth 0 (p even?)) (q-nth 1 (p even?))) [1 3])))
 
 (deftest explode-f-test
   (testing "explode-f"
     (let [fs (explode-f ((p-and (q-nth 0 (p even?)) (q-nth 1 (p even?))) [1 3]))]
       (is (= 2 (count fs)))
-      (is-f? (nth fs 0) '(p even?) 1)
-      (is-f? (nth fs 1) '(p even?) 3))
+      (is-f (nth fs 0) '(p even?) 1)
+      (is-f (nth fs 1) '(p even?) 3))
     (let [fs (explode-f ((p-all (between? 2 3)) [1 2 3 4]))]
       (is (= 3 (count fs)))
-      (is-f? (nth fs 0) '(between? 2 3) 1)
-      (is-f? (nth fs 1) '(between? 2 3) 3)
-      (is-f? (nth fs 2) '(between? 2 3) 4))
+      (is-f (nth fs 0) '(between? 2 3) 1)
+      (is-f (nth fs 1) '(between? 2 3) 3)
+      (is-f (nth fs 2) '(between? 2 3) 4))
     (let [fs (explode-f ((between? 2 3) 3))]
       (is (= 1 (count fs)))
-      (is-f? (nth fs 0) '(between? 2 3) 3))))
+      (is-f (nth fs 0) '(between? 2 3) 3))))
 
 (deftest app-p-test
   (testing "app-p"
     (is (= 3 (app-p + ((p odd?) 1) ((p even?) 2))))
-    (is-f? (app-p + ((p odd?) 1) ((p even?) 3)) '(q-nth 0 (p even?)) [3])
-    (is-f? (app-p inc ((p even?) 3)) '(p even?) 3)))
+    (is-f (app-p + ((p odd?) 1) ((p even?) 3)) '(q-nth 0 (p even?)) [3])
+    (is-f (app-p inc ((p even?) 3)) '(p even?) 3)))
 
 (deftest bind-p-test
   (testing "bind-p"
-    (is-f? (bind-p [a ((p even?) 1)]
-             (inc a))
-           '(p even?)
-           1)
+    (is-f (bind-p [a ((p even?) 1)]
+            (inc a))
+          '(p even?)
+          1)
     (is (= 3 (bind-p [a ((p even?) 2)]
                (inc a))))))
 
@@ -211,12 +219,12 @@
                      a* (+ a 2)
                      b (* a* a*)]
                ((p odd?) b))))
-    (is-f? (let-p [a ((p even?) 1)
-                   a* (+ a 2)
-                   b (* a* a*)]
-             ((p odd?) b))
-           '(p even?)
-           1)))
+    (is-f (let-p [a ((p even?) 1)
+                  a* (+ a 2)
+                  b (* a* a*)]
+            ((p odd?) b))
+          '(p even?)
+          1)))
 
 
 
